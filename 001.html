@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Python Vars Learning Game · With Real Python Runner</title>
+    <!-- Tailwind (CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React 18 UMD + ReactDOM UMD (development builds) -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <!-- Babel Standalone for in-browser JSX transform -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Pyodide: run real Python in the browser -->
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.27.2/full/pyodide.js"></script>
+    <style>
+      .spin { animation: spin 1s linear infinite; }
+      @keyframes spin { from {transform:rotate(0)} to {transform:rotate(360deg)} }
+    </style>
+  </head>
+  <body class="bg-slate-50">
+    <div id="root"></div>
+
+    <script type="text/babel">
+      const { useState, useEffect } = React;
+
+      // Boot Pyodide once and reuse
+      window.pyodideReadyPromise = (async () => {
+        const p = await loadPyodide();
+        // quick smoke test
+        await p.runPythonAsync("x=1+1");
+        return p;
+      })();
+
+      function Code({ children }) {
+        return (
+          <pre className="bg-gray-950 text-gray-100 p-4 rounded-2xl text-sm overflow-auto shadow-inner">
+            <code>{children}</code>
+          </pre>
+        );
+      }
+
+      function Card({ title, children, footer }) {
+        return (
+          <div className="rounded-2xl shadow-lg border border-gray-200 bg-white p-5">
+            <div className="text-xl font-semibold mb-3">{title}</div>
+            <div className="space-y-3">{children}</div>
+            {footer && <div className="pt-4 mt-4 border-t text-sm text-gray-600">{footer}</div>}
+          </div>
+        );
+      }
+
+      function ResultPill({ ok, text }) {
+        const cls = ok == null ? "bg-gray-100 text-gray-800" : ok ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800";
+        return (
+          <span className={"inline-flex items-center px-3 py-1 rounded-full text-sm font-medium " + cls}>
+            {text}
+          </span>
+        );
+      }
+
+      function Loader({ text="Loading..." }) {
+        return (
+          <div className="inline-flex items-center gap-2 text-sm text-gray-600">
+            <svg className="w-4 h-4 spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="3" opacity="0.3"/><path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth="3"/></svg>
+            <span>{text}</span>
+          </div>
+        );
+      }
+
+      function usePyodide() {
+        const [pyodide, setPyodide] = useState(null);
+        const [err, setErr] = useState(null);
+        useEffect(() => {
+          let mounted = true;
+          window.pyodideReadyPromise.then(p => { if (mounted) setPyodide(p); }).catch(e => setErr(e));
+          return () => { mounted = false; };
+        }, []);
+        return { pyodide, err };
+      }
+
+      function LessonIntro() {
+        return (
+          <Card title="Part 1: Python Variables (vars) Basics">
+            <p>Goal: Learn naming rules, assignment, and multiple assignment (unpacking).</p>
+            <ul className="list-disc ml-6 space-y-1">
+              <li>Variable names may contain letters, digits, and underscores, and cannot start with a digit.</li>
+              <li>They are case-sensitive (e.g., <span className="font-mono">age</span> vs <span className="font-mono">Age</span>).</li>
+              <li>Keywords cannot be used as variable names (e.g., <span className="font-mono">class</span>, <span className="font-mono">for</span>).</li>
+              <li>Assignment uses <span className="font-mono">=</span>; multiple assignment:<span className="font-mono"> x, y = 1, 2</span> and swap <span className="font-mono">x, y = y, x</span>.</li>
+            </ul>
+          </Card>
+        );
+      }
+
+      function Quiz2_Assign({ onDone }) {
+        const { pyodide } = usePyodide();
+        const [answer, setAnswer] = useState("");
+        const [status, setStatus] = useState({ ok: null, text: "Waiting for input" });
+
+        async function check() {
+          if (!pyodide) { setStatus({ ok: null, text: "Python runner not ready" }); return; }
+          setStatus({ ok: null, text: "Running..." });
+          try {
+            // Run user's code in a fresh namespace
+            const ns = pyodide.toPy({}); // create a fresh dict
+            await pyodide.runPythonAsync(answer, { globals: ns });
+            const val = ns.get("answer"); // undefined if not present
+            // convert to JS value if PyProxy
+            const jsVal = (val && typeof val.toJs === "function") ? val.toJs() : val;
+            const ok = jsVal === 42;
+            setStatus({ ok, text: ok ? "Correct" : "Not correct. Expect a variable named 'answer' with value 42 (int)." });
+            onDone?.(ok);
+            ns.destroy && ns.destroy();
+          } catch (e) {
+            setStatus({ ok: false, text: "Python error: " + e.message });
+            onDone?.(false);
+          }
+        }
+
+        return (
+          <Card title="Quiz 2: Write one assignment statement (run in real Python)">
+            <p>Requirement: Assign integer <span className="font-mono">42</span> to a variable named <span className="font-mono">answer</span>.</p>
+            <input
+              className="w-full border rounded-xl p-3 font-mono"
+              placeholder='Type here, e.g., answer = 42'
+              value={answer}
+              onChange={(e) => setAnswer(e.target.value)}
+            />
+            <div className="flex items-center gap-3">
+              <button onClick={check} className="px-4 py-2 rounded-xl bg-blue-600 text-white shadow">Submit</button>
+              <ResultPill ok={status.ok} text={status.text} />
+              {!pyodide && <Loader text="Loading Python..." />}
+            </div>
+            <Code>{`# Example\nanswer = 42`}</Code>
+          </Card>
+        );
+      }
+
+      function Quiz3_MultiAssign({ onDone }) {
+        const { pyodide } = usePyodide();
+        const [answer, setAnswer] = useState("");
+        const [status, setStatus] = useState({ ok: null, text: "Waiting for input" });
+
+        async function check() {
+          if (!pyodide) { setStatus({ ok: null, text: "Python runner not ready" }); return; }
+          setStatus({ ok: null, text: "Running..." });
+          try {
+            const ns = pyodide.toPy({});
+            await pyodide.runPythonAsync(answer, { globals: ns });
+            const xv = ns.get("x");
+            const yv = ns.get("y");
+            const x = (xv && typeof xv.toJs === "function") ? xv.toJs() : xv;
+            const y = (yv && typeof yv.toJs === "function") ? yv.toJs() : yv;
+            const ok = x === 1 && y === 2;
+            setStatus({ ok, text: ok ? "Correct" : "Not correct. Make x == 1 and y == 2." });
+            onDone?.(ok);
+            ns.destroy && ns.destroy();
+          } catch (e) {
+            setStatus({ ok: false, text: "Python error: " + e.message });
+            onDone?.(false);
+          }
+        }
+
+        return (
+          <Card title="Quiz 3: Multiple assignment (run in real Python)">
+            <p>Requirement: In one line, assign <span className="font-mono">1</span> to <span className="font-mono">x</span> and <span className="font-mono">2</span> to <span className="font-mono">y</span>.</p>
+            <input
+              className="w-full border rounded-xl p-3 font-mono"
+              placeholder="e.g., x, y = 1, 2"
+              value={answer}
+              onChange={(e) => setAnswer(e.target.value)}
+            />
+            <div className="flex items-center gap-3">
+              <button onClick={check} className="px-4 py-2 rounded-xl bg-blue-600 text-white shadow">Submit</button>
+              <ResultPill ok={status.ok} text={status.text} />
+              {!pyodide && <Loader text="Loading Python..." />}
+            </div>
+            <Code>{`# Example\nx, y = 1, 2`}</Code>
+          </Card>
+        );
+      }
+
+      function Quiz4_Predict() {
+        const [answer, setAnswer] = useState("");
+        const [status, setStatus] = useState({ ok: null, text: "Waiting for input" });
+        function check() {
+          const expected = 16;
+          const num = Number(String(answer).trim());
+          const ok = Number.isFinite(num) && num === expected;
+          setStatus({ ok, text: ok ? "Correct" : "Not correct. Answer: 16" });
+        }
+        return (
+          <Card title="Quiz 4: Predict the final value">
+            <p>Read the code and fill in the final value of <span className="font-mono">x</span>:</p>
+            <Code>{`x = 5\nx = x + 3\nx = x * 2`}</Code>
+            <div className="flex items-center gap-3">
+              <input className="border rounded-xl p-3 w-40 font-mono" placeholder="e.g., 16" value={answer} onChange={(e) => setAnswer(e.target.value)} />
+              <button onClick={check} className="px-4 py-2 rounded-xl bg-blue-600 text-white shadow">Submit</button>
+              <ResultPill ok={status.ok} text={status.text} />
+            </div>
+          </Card>
+        );
+      }
+
+      function App() {
+        const [score, setScore] = useState(0);
+        const [completed, setCompleted] = useState({ q2: false, q3: false, q4: false });
+        const total = 3;
+        const doneCount = Object.values(completed).filter(Boolean).length;
+        const progress = Math.round((doneCount / total) * 100);
+
+        function handleDone(key, ok) {
+          setCompleted(prev => {
+            if (prev[key]) return prev;
+            if (ok) setScore(s => s + 1);
+            return { ...prev, [key]: true };
+          });
+        }
+
+        return (
+          <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100">
+            <header className="max-w-5xl mx-auto px-6 py-8">
+              <h1 className="text-3xl font-bold tracking-tight">Python Syntax Learning Game · Part 1: Variables (with real Python)</h1>
+              <p className="text-gray-600 mt-1">These quizzes actually run your Python in the browser via Pyodide.</p>
+            </header>
+
+            <main className="max-w-5xl mx-auto px-6 pb-16 space-y-6">
+              <div className="rounded-2xl border bg-white p-5 flex items-center gap-4 shadow-sm">
+                <div className="w-28">
+                  <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+                    <div className="h-3 bg-blue-600" style={{ width: progress + "%" }} />
+                  </div>
+                </div>
+                <div className="text-sm text-gray-700">Progress: {doneCount}/{total} · Score: {score}</div>
+                <div className="ml-auto text-sm text-gray-500">Tip: You can write real Python here.</div>
+              </div>
+
+              <LessonIntro />
+              <Quiz2_Assign onDone={(ok) => handleDone("q2", ok)} />
+              <Quiz3_MultiAssign onDone={(ok) => handleDone("q3", ok)} />
+              <Quiz4_Predict onDone={(ok) => handleDone("q4", ok)} />
+
+              <Card title="What changed?">
+                <ul className="list-disc ml-6 space-y-1">
+                  <li>We validate by actually executing your Python code using Pyodide (CPython compiled to WebAssembly).</li>
+                  <li>No fragile regex checks. We inspect the variables created by your code.</li>
+                  <li>This file is still a single HTML. No Node/Vite required.</li>
+                </ul>
+              </Card>
+            </main>
+          </div>
+        );
+      }
+
+      const root = ReactDOM.createRoot(document.getElementById("root"));
+      root.render(<App />);
+    </script>
+  </body>
+</html>

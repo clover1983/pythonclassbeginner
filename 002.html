@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Python Class 2 · Numbers (Strict, Auto-Strip)</title>
+  <!-- Tailwind (CDN) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- React 18 UMD + ReactDOM UMD (development builds) -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <!-- Babel Standalone for in-browser JSX transform -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- Pyodide: run real Python in the browser -->
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.29.0/full/pyodide.js"></script>
+  <style>
+    .spin { animation: spin 1s linear infinite; }
+    @keyframes spin { from {transform:rotate(0)} to {transform:rotate(360deg)} }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace; }
+  </style>
+</head>
+<body class="bg-slate-50">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useEffect, useState } = React;
+
+    // Boot Pyodide and define a helper run_user that auto-strips each line and captures stdout/stderr.
+    const pyodideReadyPromise = (async () => {
+      const p = await loadPyodide({
+        indexURL: "https://cdn.jsdelivr.net/pyodide/v0.29.0/full/"
+      });
+      await p.runPythonAsync([
+      "import sys, io",
+        "def _auto_strip_lines(src):",
+        "    lines = src.replace('\\r\\n','\\n').replace('\\r','\\n').split('\\n')",
+        "    return '\\n'.join([ln.strip() for ln in lines])",
+        "",
+        "def run_user(src):",
+        "    code = _auto_strip_lines(src)",
+        "    glb = {}",
+        "    _out = io.StringIO(); _err = io.StringIO()",
+        "    old_out, old_err = sys.stdout, sys.stderr",
+        "    sys.stdout, sys.stderr = _out, _err",
+        "    try:",
+        "        exec(code, glb, glb)",
+        "    finally:",
+        "        sys.stdout, sys.stderr = old_out, old_err",
+        "    return {'glb': glb, 'out': _out.getvalue(), 'err': _err.getvalue(), 'code': code}",
+    ].join('\n'));
+      return p;
+    })().catch(e => {
+      console.error("Pyodide init failed:", e);
+      alert("Pyodide init failed: " + e.message);
+    });
+
+    function usePyRunner() {
+      const [pyodide, setPyodide] = useState(null);
+      const [err, setErr] = useState(null);
+      useEffect(() => {
+        let mounted = true;
+        pyodideReadyPromise.then(p => mounted && setPyodide(p)).catch(e => setErr(e));
+        return () => { mounted = false; };
+      }, []);
+      return { pyodide, err };
+    }
+
+    // ✅ 保留 glb 为 PyProxy；out/err/code 做“有 toJs 就用，没有就直接用”
+    async function runUser(pyodide, code) {
+      const run_user = pyodide.globals.get("run_user");
+      const res = run_user(code);                    // PyProxy(dict)
+
+      const getJs = (obj, key) => {
+        const v = obj.get(key);                      // 可能是 PyProxy，也可能已是 JS 值
+        return (v && typeof v.toJs === "function") ? v.toJs() : v;
+      };
+
+      const glb = res.get("glb");                    // 这一定要保留为 PyProxy（后面要 .get() 变量）
+      const out = getJs(res, "out");                 // string
+      const err = getJs(res, "err");                 // string
+      const codeNorm = getJs(res, "code");           // string
+
+      res.destroy && res.destroy();                  // 回收外层 dict
+      return { glb, out, err, code: codeNorm };
+    }
+
+    function Code({children}){
+      return <pre className="bg-gray-950 text-gray-100 p-4 rounded-2xl text-sm overflow-auto shadow-inner mono"><code>{children}</code></pre>;
+    }
+
+    function Card({title, children, footer}){
+      return (
+        <div className="rounded-2xl shadow-lg border border-gray-200 bg-white p-5">
+          <div className="text-xl font-semibold mb-3">{title}</div>
+          <div className="space-y-3">{children}</div>
+          {footer && <div className="pt-4 mt-4 border-t text-sm text-gray-600">{footer}</div>}
+        </div>
+      );
+    }
+
+    function Pill({ok, text}){
+      const cls = ok == null ? "bg-gray-100 text-gray-800" : ok ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800";
+      return <span className={"inline-flex items-center px-3 py-1 rounded-full text-sm font-medium " + cls}>{text}</span>;
+    }
+
+    function Loader({text="Loading Python..."}){
+      return (
+        <div className="inline-flex items-center gap-2 text-sm text-gray-600">
+          <svg className="w-4 h-4 spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="3" opacity="0.3"/><path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth="3"/></svg>
+          <span>{text}</span>
+        </div>
+      );
+    }
+
+    function Intro(){
+      return (
+        <Card title="Class 2: Numbers (int, float), arithmetic, print — Strict mode">
+          <ul className="list-disc ml-6 space-y-1">
+            <li><b>Strict rule:</b> Use the exact numbers specified in each quiz (e.g., a=7 and b=3).</li>
+            <li><b>int</b> vs <b>float</b>, ops: <span className="mono">+</span> <span>/</span> <span>-</span> <span>*</span> <span className="mono">//</span> <span className="mono">%</span> <span className="mono">**</span>.</li>
+            <li><span className="mono">print(...)</span> output is captured and compared when required.</li>
+            <li>Each line of your input is auto-stripped (leading/trailing spaces removed).</li>
+          </ul>
+        </Card>
+      );
+    }
+
+    // Reusable Python quiz with textarea
+    function PyQuiz({id, title, prompt, starter="", example, check}){
+      const { pyodide, err } = usePyRunner();
+      const [code, setCode] = useState(starter);
+      const [status, setStatus] = useState({ ok: null, text: "Waiting for input" });
+
+      async function run(){
+        if(!pyodide){ setStatus({ok:null, text:"Python not ready"}); return; }
+        setStatus({ok:null, text:"Running..."});
+        try{
+          const res = await runUser(pyodide, code);
+          const glb = res.glb;  // PyProxy (dict)
+          const out = res.out;
+          const err = res.err;
+          const codeNorm = res.code;
+          const toJsVal = (name) => {
+            const pyv = glb.get(name);
+            if (pyv === undefined || pyv === null) return undefined;
+            return (typeof pyv.toJs === "function") ? pyv.toJs() : pyv;
+          };
+          const qpass = await check({ glb, out, err, code: codeNorm, get: toJsVal });
+
+          // 变量快照（把 glb 中用户定义的变量转成 JS 值）
+          let snapshot = {};
+          try {
+            const ks = glb.keys();
+            const names = (typeof ks.toJs === "function") ? ks.toJs() : [];
+            for (const k of names) {
+              const v = glb.get(k);
+              snapshot[k] = (v && typeof v.toJs === "function") ? v.toJs() : v;
+            }
+          } catch (_) {}
+
+          setStatus({
+            ok: qpass,
+            text: qpass ? "Correct" : "Not correct. See hints.",
+            lastOut: out,
+            lastErr: err,
+            lastVars: snapshot
+          });
+
+          glb.destroy && glb.destroy();
+        }catch(e){
+          setStatus({ok:false, text:"Python error: " + e.message});
+        }
+      }
+
+      return (
+        <Card title={title}>
+          <p>{prompt}</p>
+          <textarea className="w-full h-28 border rounded-xl p-3 mono" value={code} onChange={e=>setCode(e.target.value)} placeholder={example || "Write Python here..."} />
+          <div className="flex items-center gap-3">
+            <button onClick={run} className="px-4 py-2 rounded-xl bg-blue-600 text-white shadow">Run</button>
+            <Pill ok={status.ok} text={status.text} />
+            {(status.lastOut || status.lastErr) && (
+              <div className="text-xs mono text-gray-700">
+                {status.lastOut ? <div>stdout: {String(status.lastOut)}</div> : null}
+                {status.lastErr ? <div>stderr: {String(status.lastErr)}</div> : null}
+              </div>
+            )}
+            {status.lastVars && Object.keys(status.lastVars).length > 0 && (
+              <pre className="bg-slate-100 text-slate-800 text-xs p-2 rounded mono overflow-auto">
+                {JSON.stringify(status.lastVars, null, 2)}
+              </pre>
+            )}
+            {!pyodide && <Loader />}
+          </div>
+          {example && <Code>{example}</Code>}
+        </Card>
+      );
+    }
+
+    function App(){
+      const [score, setScore] = useState(0);
+      const [done, setDone] = useState({});
+      function onPass(key){
+        if (!done[key]) {
+          setDone(prev => ({...prev, [key]: true}));
+          setScore(s => s + 1);
+        }
+      }
+      const total = 7;
+      const progress = Math.round(Object.keys(done).length/total*100);
+
+      return (
+        <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100">
+          <header className="max-w-5xl mx-auto px-6 py-8">
+            <h1 className="text-3xl font-bold tracking-tight">Python Class 2 · Numbers (Strict, Auto-Strip)</h1>
+            <p className="text-gray-600 mt-1">Complete {total} quizzes using the exact numbers required.</p>
+          </header>
+
+          <main className="max-w-5xl mx-auto px-6 pb-20 space-y-6">
+            <div className="rounded-2xl border bg-white p-5 flex items-center gap-4 shadow-sm">
+              <div className="w-28">
+                <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+                  <div className="h-3 bg-blue-600" style={{ width: progress + "%" }} />
+                </div>
+              </div>
+              <div className="text-sm text-gray-700">Progress: {Object.keys(done).length}/{total} · Score: {score}</div>
+              <div className="ml-auto text-sm text-gray-500">Tip: Multiple lines allowed.</div>
+            </div>
+
+            <Intro />
+
+            <PyQuiz
+              id="q1"
+              title="Quiz 1 · int addition (strict numbers)"
+              prompt="Use exactly a=7 and b=3, then compute c=a+b. Pass if a==7, b==3, and c==a+b==10."
+              example={`a = 7\nb = 3\nc = a + b`}
+              check={({get}) => {
+                const a = get("a"), b = get("b"), c = get("c");
+                const pass = a === 7 && b === 3 && c === 10 && c === a + b;
+                if (pass) { onPass("q1"); }
+                return pass;
+              }}
+            />
+
+            <PyQuiz
+              id="q2"
+              title="Quiz 2 · float division (strict numbers)"
+              prompt="Compute x = 7/2 using the literal 7 and 2. Pass if x == 3.5 (float)."
+              example={`x = 7 / 2`}
+              check={({get, code}) => {
+                const x = get("x");
+                const uses = /7\s*\/\s*2/.test(code);
+                const pass = uses && x === 3.5;
+                if (pass) { onPass("q2"); }
+                return pass;
+              }}
+            />
+
+            <PyQuiz
+              id="q3"
+              title="Quiz 3 · floor division and modulo (strict numbers)"
+              prompt="Use a=7 and b=3, set q = a // b and r = a % b. Pass if q==2 and r==1."
+              example={`a = 7\nb = 3\nq = a // b\nr = a % b`}
+              check={({get}) => {
+                const a = get("a"), b = get("b"), q = get("q"), r = get("r");
+                const pass = a === 7 && b === 3 && q === 2 && r === 1;
+                if (pass) { onPass("q3"); }
+                return pass;
+              }}
+            />
+
+            <PyQuiz
+              id="q4"
+              title="Quiz 4 · exponentiation (strict numbers)"
+              prompt="Set y = 2 ** 5 using the literal 2 and 5. Pass if y == 32."
+              example={`y = 2 ** 5`}
+              check={({get, code}) => {
+                const y = get("y");
+                const uses = /2\s*\*\*\s*5/.test(code);
+                const pass = uses && y === 32;
+                if (pass) { onPass("q4"); }
+                return pass;
+              }}
+            />
+
+            <PyQuiz
+              id="q5"
+              title="Quiz 5 · precedence vs parentheses (strict numbers)"
+              prompt="Make ans equal to (2+3)*4 using parentheses. Pass if ans == 20 and the code contains parentheses around 2+3."
+              example={`ans = (2 + 3) * 4`}
+              check={({get, code}) => {
+                const ans = get("ans");
+                const hasParens = /\(\s*2\s*\+\s*3\s*\)/.test(code);
+                const pass = ans === 20 && hasParens;
+                if (pass) { onPass("q5"); }
+                return pass;
+              }}
+            />
+
+            <PyQuiz
+              id="q6"
+              title="Quiz 6 · type conversion (strict forms)"
+              prompt="Given s='3.14', create pi = float(s) and n = int(3.9). Pass if pi==3.14 and n==3, and your code uses float( and int( exactly."
+              example={`s = "3.14"\npi = float(s)\nn = int(3.9)`}
+              check={({get, code}) => {
+                const pi = get("pi");
+                const n = get("n");
+                const usesFloat = /float\s*\(/.test(code);
+                const usesInt = /int\s*\(/.test(code);
+                const pass = Math.abs(pi - 3.14) < 1e-12 && n === 3 && usesFloat && usesInt;
+                if (pass) { onPass("q6"); }
+                return pass;
+              }}
+            />
+
+            <PyQuiz
+              id="q7"
+              title="Quiz 7 · print output (strict)"
+              prompt="Print the value 12.5 exactly once using print(...). Pass if stdout is exactly '12.5\n'."
+              example={`x = 12.5\nprint(x)`}
+              check={({out}) => {
+                const pass = out === "12.5\n";
+                if (pass) { onPass("q7"); }
+                return pass;
+              }}
+            />
+
+            <Card title="Recap & Tips" footer="Try: negative operands with // and %, use round(x, k), and confirm relationships like a == (a//b)*b + (a%b).">
+              <ul className="list-disc ml-6 space-y-1">
+                <li>Strict mode requires the exact numbers or forms mentioned in each prompt.</li>
+                <li><span className="mono">/</span> is floating-point division; <span className="mono">//</span> floors toward negative infinity.</li>
+                <li><span className="mono">%</span> remainder; identity: <span className="mono">a == (a // b) * b + (a % b)</span>.</li>
+                <li>Use parentheses to control precedence. When in doubt, add them.</li>
+              </ul>
+            </Card>
+          </main>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<App />);
+  </script>
+</body>
+</html>

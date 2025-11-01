@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Python Class · Lesson Hub (001–005)</title>
+  <style>
+    :root{
+      --bg:#0f172a;
+      --panel:#0b1224;
+      --card:#0f1b36;
+      --card2:#0c1630;
+      --text:#e2e8f0;
+      --muted:#94a3b8;
+      --accent:#60a5fa;
+      --ring:#1d4ed8;
+      --ok:#22c55e;
+      --shadow: 0 10px 25px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.03);
+      --radius: 18px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      background: radial-gradient(1200px 600px at 10% 0%, #0b1224, #0a0f1f 40%, #070b15 70%), var(--bg);
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    .wrap{max-width:1100px; margin:0 auto; padding:40px 24px 64px}
+    header{
+      display:flex; align-items:center; gap:18px; margin-bottom:22px;
+    }
+    .logo{
+      width:44px; height:44px; border-radius:12px;
+      background: linear-gradient(160deg, #1d4ed8, #60a5fa);
+      box-shadow: 0 6px 18px rgba(29,78,216,.45);
+      display:grid; place-items:center; color:white; font-weight:800;
+      letter-spacing:.5px;
+    }
+    .title{font-size:28px; font-weight:800; letter-spacing:.3px}
+    .subtitle{color:var(--muted); margin-top:2px}
+    .panel{
+      background:linear-gradient(180deg, rgba(255,255,255,.03), transparent), var(--panel);
+      border:1px solid rgba(255,255,255,.06);
+      border-radius: var(--radius);
+      padding:18px;
+      box-shadow: var(--shadow);
+      margin-top:18px;
+    }
+    .grid{
+      display:grid;
+      grid-template-columns: repeat(5, minmax(0,1fr));
+      gap:16px;
+    }
+    @media (max-width: 980px){
+      .grid{grid-template-columns: repeat(3, minmax(0,1fr));}
+    }
+    @media (max-width: 640px){
+      .grid{grid-template-columns: repeat(1, minmax(0,1fr));}
+    }
+    .card{
+      position:relative;
+      overflow:hidden;
+      border-radius: var(--radius);
+      border:1px solid rgba(255,255,255,.07);
+      background: linear-gradient(180deg, rgba(255,255,255,.02), transparent), var(--card);
+      box-shadow: var(--shadow);
+      padding:18px 16px 16px;
+      transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease;
+    }
+    .card:hover{
+      transform: translateY(-3px);
+      border-color: rgba(96,165,250,.8);
+      box-shadow: 0 16px 35px rgba(2,6,23,.6), inset 0 0 0 1px rgba(96,165,250,.25);
+    }
+    .card h3{margin:0 0 6px; font-size:18px; letter-spacing:.2px}
+    .badge{
+      display:inline-flex; align-items:center; gap:8px;
+      color: var(--muted);
+      font-size:12px;
+    }
+    .badge .dot{width:8px;height:8px;border-radius:999px;background:var(--accent);box-shadow:0 0 0 3px rgba(96,165,250,.18)}
+    .desc{color:var(--muted); font-size:14px; line-height:1.4; margin-top:8px; min-height:42px}
+    .cta{
+      display:inline-flex; align-items:center; gap:10px;
+      margin-top:14px; font-weight:700; font-size:14px; letter-spacing:.2px;
+      color:var(--text); text-decoration:none; padding:10px 12px; border-radius:12px;
+      background: linear-gradient(180deg, rgba(96,165,250,.15), rgba(96,165,250,.05));
+      border:1px solid rgba(96,165,250,.45);
+      box-shadow: 0 8px 18px rgba(29,78,216,.25);
+    }
+    .cta:hover{background: linear-gradient(180deg, rgba(96,165,250,.22), rgba(96,165,250,.08));}
+    .footer{color:var(--muted); font-size:12px; margin-top:22px}
+    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace;}
+    .num{
+      position:absolute; right:12px; top:10px;
+      color:#a5b4fc; font-weight:800; font-size:28px; opacity:.2;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="logo">Py</div>
+      <div>
+        <div class="title">Python Class · Lesson Hub</div>
+        <div class="subtitle">Units 001 to 005 — fundamentals with live coding quizzes</div>
+      </div>
+    </header>
+
+    <section class="panel">
+      <div class="grid">
+        <article class="card">
+          <div class="num">001</div>
+          <h3>Variables</h3>
+          <div class="badge"><span class="dot"></span> Basics: names, assignment, printing</div>
+          <p class="desc">Create and update variables, naming rules, re-assignment, and <span class="mono">print()</span>.</p>
+          <a class="cta" href="001.html" aria-label="Open 001 Variables">Open 001</a>
+        </article>
+        <article class="card" style="background:linear-gradient(180deg, rgba(255,255,255,.02), transparent), var(--card2)">
+          <div class="num">002</div>
+          <h3>Numbers</h3>
+          <div class="badge"><span class="dot"></span> Integers, floats, operators</div>
+          <p class="desc">Arithmetic, division vs floor division, modulo, exponent, precedence and parentheses.</p>
+          <a class="cta" href="002.html" aria-label="Open 002 Numbers">Open 002</a>
+        </article>
+        <article class="card">
+          <div class="num">003</div>
+          <h3>Strings</h3>
+          <div class="badge"><span class="dot"></span> Methods, slicing, f-strings</div>
+          <p class="desc">Concatenation, <span class="mono">len()</span>, slices, <span class="mono">split/join/replace</span>, and formatting.</p>
+          <a class="cta" href="003.html" aria-label="Open 003 Strings">Open 003</a>
+        </article>
+        <article class="card" style="background:linear-gradient(180deg, rgba(255,255,255,.02), transparent), var(--card2)">
+          <div class="num">004</div>
+          <h3>Booleans</h3>
+          <div class="badge"><span class="dot"></span> True, False, logic and comparisons</div>
+          <p class="desc"><span class="mono">and / or / not</span>, truthiness, chained comparisons, and conditional expressions.</p>
+          <a class="cta" href="004.html" aria-label="Open 004 Booleans">Open 004</a>
+        </article>
+        <article class="card">
+          <div class="num">005</div>
+          <h3>None & Emptiness</h3>
+          <div class="badge"><span class="dot"></span> Null value and empty containers</div>
+          <p class="desc"><span class="mono">None</span> identity checks, <span class="mono">bool(x)</span>, defaulting with <span class="mono">or</span>, and guards for missing values.</p>
+          <a class="cta" href="005.html" aria-label="Open 005 None and Emptiness">Open 005</a>
+        </article>
+      </div>
+      <div class="footer">
+        Tip: open each unit to practice with in-browser Python (Pyodide). All pages are standalone and can be used offline once loaded.
+      </div>
+    </section>
+  </div>
+</body>
+</html>
