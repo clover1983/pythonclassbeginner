@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Python Class 11 · Math & Operators (Hands-on)</title>
+  <!-- Tailwind (CDN) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- React 18 UMD + ReactDOM UMD (development builds) -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <!-- Babel Standalone for in-browser JSX transform -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- Pyodide v0.29: real Python in browser -->
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.29.0/full/pyodide.js"></script>
+  <style>
+    .spin { animation: spin 1s linear infinite; }
+    @keyframes spin { from {transform:rotate(0)} to {transform:rotate(360deg)} }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace; }
+  </style>
+</head>
+<body class="bg-slate-50">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useEffect, useState } = React;
+
+    // --- Boot Pyodide (v0.29) and inject helpers ---
+    const pyodideReadyPromise = (async () => {
+      const p = await loadPyodide({
+        indexURL: "https://cdn.jsdelivr.net/pyodide/v0.29.0/full/"
+      });
+      await p.runPythonAsync([
+        "import sys, io",
+        "def _auto_strip_lines(src):",
+        "    s = src.replace('\\r\\n','\\n').replace('\\r','\\n')",
+        "    lines = s.split('\\n')",
+        "    # keep indentation; only trim the end of each line",
+        "    return '\\n'.join([ln.rstrip() for ln in lines])",
+        "",
+        "def run_user(src):",
+        "    code = _auto_strip_lines(src)",
+        "    glb = {}",
+        "    _out = io.StringIO(); _err = io.StringIO()",
+        "    old_out, old_err = sys.stdout, sys.stderr",
+        "    sys.stdout, sys.stderr = _out, _err",
+        "    try:",
+        "        exec(code, glb, glb)",
+        "    finally:",
+        "        sys.stdout, sys.stderr = old_out, old_err",
+        "    return {'glb': glb, 'out': _out.getvalue(), 'err': _err.getvalue(), 'code': code}",
+      ].join('\n'));
+      return p;
+    })().catch(e => {
+      console.error("Pyodide init failed:", e);
+      alert("Pyodide init failed: " + e.message);
+    });
+
+    function usePyRunner() {
+      const [pyodide, setPyodide] = useState(null);
+      const [err, setErr] = useState(null);
+      useEffect(() => {
+        let mounted = true;
+        pyodideReadyPromise.then(p => mounted && setPyodide(p)).catch(e => setErr(e));
+        return () => { mounted = false; };
+      }, []);
+      return { pyodide, err };
+    }
+
+    // Keep glb as PyProxy; convert strings safely
+    async function runUser(pyodide, code) {
+      const run_user = pyodide.globals.get("run_user");
+      const res = run_user(code); // dict PyProxy
+      const getJs = (obj, key) => {
+        const v = obj.get(key);
+        return (v && typeof v.toJs === "function") ? v.toJs() : v;
+      };
+      const glb = res.get("glb");                 // PyProxy(dict)
+      const out = getJs(res, "out");              // string
+      const err = getJs(res, "err");              // string
+      const codeNorm = getJs(res, "code");        // string
+      res.destroy && res.destroy();
+      return { glb, out, err, code: codeNorm };
+    }
+
+    // Small helpers
+    function approx(a,b,eps=1e-9){ return Math.abs(a-b) < eps; }
+
+    function Code({children}){
+      return <pre className="bg-gray-950 text-gray-100 p-4 rounded-2xl text-sm overflow-auto shadow-inner mono"><code>{children}</code></pre>;
+    }
+    function Card({title, children, footer}){
+      return (
+        <div className="rounded-2xl shadow-lg border border-gray-200 bg-white p-5">
+          <div className="text-xl font-semibold mb-3">{title}</div>
+          <div className="space-y-3">{children}</div>
+          {footer && <div className="pt-4 mt-4 border-t text-sm text-gray-600">{footer}</div>}
+        </div>
+      );
+    }
+    function Pill({ok, text}){
+      const cls = ok == null ? "bg-gray-100 text-gray-800" : ok ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800";
+      return <span className={"inline-flex items-center px-3 py-1 rounded-full text-sm font-medium " + cls}>{text}</span>;
+    }
+    function Loader({text="Loading Python..."}){
+      return (
+        <div className="inline-flex items-center gap-2 text-sm text-gray-600">
+          <svg className="w-4 h-4 spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="3" opacity="0.3"/><path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth="3"/></svg>
+          <span>{text}</span>
+        </div>
+      );
+    }
+
+    function Intro(){
+      return (
+        <Card title="Class 11: math module & common operators — numbers done right">
+          <ul className="list-disc ml-6 space-y-1">
+            <li>Import once: <span className="mono">import math</span>. Constants: <span className="mono">math.pi</span>, <span className="mono">math.e</span>.</li>
+            <li>Popular functions: <span className="mono">sqrt</span>, <span className="mono">floor</span>, <span className="mono">ceil</span>, <span className="mono">fabs</span>, <span className="mono">factorial</span>, <span className="mono">pow</span>, <span className="mono">log</span>, <span className="mono">log10</span>, <span className="mono">sin</span>, <span className="mono">cos</span>, <span className="mono">radians</span>.</li>
+            <li>Arithmetic: <span className="mono">+</span>, <span className="mono">-</span>, <span className="mono">*</span>, <span className="mono">/</span>, <span className="mono">//</span>, <span className="mono">%</span>, <span className="mono">**</span>.</li>
+            <li>Comparisons: <span className="mono">==</span>, <span className="mono">!=</span>, <span className="mono">&lt;</span>, <span className="mono">&lt;=</span>, <span className="mono">&gt;</span>, <span className="mono">&gt;=</span>.</li>
+            <li>Logic: <span className="mono">and</span>, <span className="mono">or</span>, <span className="mono">not</span>. Membership: <span className="mono">in</span>, <span className="mono">not in</span>. Identity: <span className="mono">is</span>, <span className="mono">is not</span>.</li>
+            <li>Bitwise: <span className="mono">&</span>, <span className="mono">|</span>, <span className="mono">^</span>, <span className="mono">~</span>, <span className="mono">&laquo;</span>, <span className="mono">&raquo;</span>.</li>
+          </ul>
+        </Card>
+      );
+    }
+
+    // Generic quiz component
+    function PyQuiz({id, title, prompt, starter="", example, check}){
+      const { pyodide, err } = usePyRunner();
+      const [code, setCode] = useState(starter);
+      const [status, setStatus] = useState({ ok: null, text: "Waiting for input" });
+
+      async function run(){
+        if(!pyodide){ setStatus({ok:null, text:"Python not ready"}); return; }
+        setStatus({ok:null, text:"Running..."});
+        try{
+          const res = await runUser(pyodide, code);
+          const glb = res.glb;
+          const out = res.out;
+          const err = res.err;
+          const codeNorm = res.code;
+          const get = (name) => {
+            const pyv = glb.get(name);
+            if (pyv === undefined || pyv === null) return undefined;
+            return (typeof pyv.toJs === "function") ? pyv.toJs() : pyv;
+          };
+
+          const qpass = await check({glb, out, err, code: codeNorm, get});
+
+          // Snapshot variables
+          let snapshot = {};
+          try {
+            const ks = glb.keys();
+            const names = (typeof ks.toJs === "function") ? ks.toJs() : [];
+            for (const k of names) {
+              const v = glb.get(k);
+              snapshot[k] = (v && typeof v.toJs === "function") ? v.toJs() : v;
+            }
+          } catch (_) {}
+
+          setStatus({
+            ok: qpass,
+            text: qpass ? "Correct" : "Not correct. See hints.",
+            lastOut: out,
+            lastErr: err,
+            lastVars: snapshot
+          });
+
+          glb.destroy && glb.destroy();
+
+        }catch(e){
+          setStatus({ok:false, text:"Python error: " + e.message});
+        }
+      }
+
+      return (
+        <Card title={title}>
+          <p>{prompt}</p>
+          <textarea className="w-full h-96 border rounded-xl p-3 mono" value={code} onChange={e=>setCode(e.target.value)} placeholder={example || "Write Python here..."} />
+          <div className="flex items-center gap-3">
+            <button onClick={run} className="px-4 py-2 rounded-xl bg-blue-600 text-white shadow">Run</button>
+            <Pill ok={status.ok} text={status.text} />
+            {(status.lastOut || status.lastErr) && (
+              <div className="text-xs mono text-gray-700">
+                {status.lastOut ? <div>stdout: {String(status.lastOut)}</div> : null}
+                {status.lastErr ? <div>stderr: {String(status.lastErr)}</div> : null}
+              </div>
+            )}
+            {status.lastVars && Object.keys(status.lastVars).length > 0 && (
+              <pre className="bg-slate-100 text-slate-800 text-xs p-2 rounded mono overflow-auto">
+                {JSON.stringify(status.lastVars, null, 2)}
+              </pre>
+            )}
+            {!pyodide && <Loader />}
+          </div>
+          {example && <Code>{example}</Code>}
+        </Card>
+      );
+    }
+
+    function App(){
+      const [score, setScore] = useState(0);
+      const [done, setDone] = useState({});
+      function onPass(key){
+        if (!done[key]) {
+          setDone(prev => ({...prev, [key]: true}));
+          setScore(s => s + 1);
+        }
+      }
+      const total = 9;
+      const progress = Math.round(Object.keys(done).length/total*100);
+
+      return (
+        <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100">
+          <header className="max-w-5xl mx-auto px-6 py-8">
+            <h1 className="text-3xl font-bold tracking-tight">Python Class 11 · Math & Operators (Hands-on)</h1>
+            <p className="text-gray-600 mt-1">Complete {total} quizzes. Real Python runs in your browser.</p>
+          </header>
+
+          <main className="max-w-5xl mx-auto px-6 pb-20 space-y-6">
+            <div className="rounded-2xl border bg-white p-5 flex items-center gap-4 shadow-sm">
+              <div className="w-28">
+                <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+                  <div className="h-3 bg-blue-600" style={{ width: progress + "%" }} />
+                </div>
+              </div>
+              <div className="text-sm text-gray-700">Progress: {Object.keys(done).length}/{total} · Score: {score}</div>
+              <div className="ml-auto text-sm text-gray-500">Tip: Use the examples as a starting point.</div>
+            </div>
+
+            <Intro />
+
+            <PyQuiz
+              id="q1"
+              title="Q1 · import math and sqrt"
+              prompt='Import math and compute x = math.sqrt(81). Pass if x == 9; code must use import math and math.sqrt('
+              example={`import math\nx = math.sqrt(81)`}
+              check={({get, code}) => {
+                const x = get("x");
+                const usedImport = /(^|\n)\s*import\s+math\b/.test(code);
+                const usedSqrt = /math\.sqrt\(/.test(code);
+                const ok = usedImport && usedSqrt && x === 9;
+                if (ok) onPass("q1");
+                return ok;
+              }}
+            />
+
+            <PyQuiz
+              id="q2"
+              title="Q2 · floor and ceil"
+              prompt='Make a = math.floor(3.7) and b = math.ceil(3.1). Pass if a==3 and b==4; code must use math.floor and math.ceil.'
+              example={`import math\na = math.floor(3.7)\nb = math.ceil(3.1)`}
+              check={({get, code}) => {
+                const a = get("a"); const b = get("b");
+                const usedFloor = /math\.floor\(/.test(code);
+                const usedCeil = /math\.ceil\(/.test(code);
+                const ok = usedFloor && usedCeil && a === 3 && b === 4;
+                if (ok) onPass("q2");
+                return ok;
+              }}
+            />
+
+            <PyQuiz
+              id="q3"
+              title="Q3 · pi and area"
+              prompt='Use r = 2; area = math.pi * (r ** 2). Pass if area ≈ 12.56637; code must use math.pi and **.'
+              example={`import math\nr = 2\narea = math.pi * (r ** 2)`}
+              check={({get, code}) => {
+                const area = get("area");
+                const usedPi = /math\.pi/.test(code);
+                const usedPow = /\*\*/.test(code);
+                const ok = usedPi && usedPow && approx(area, 12.566370614359172);
+                if (ok) onPass("q3");
+                return ok;
+              }}
+            />
+
+            <PyQuiz
+              id="q4"
+              title="Q4 · radians and sin"
+              prompt='Use ang_deg = 30; ang_rad = math.radians(ang_deg); s = math.sin(ang_rad). Pass if s ≈ 0.5 and code uses math.radians('
+              example={`import math\nang_deg = 30\nang_rad = math.radians(ang_deg)\ns = math.sin(ang_rad)`}
+              check={({get, code}) => {
+                const s = get("s");
+                const usedRad = /math\.radians\(/.test(code);
+                const ok = usedRad && approx(s, 0.5);
+                if (ok) onPass("q4");
+                return ok;
+              }}
+            />
+
+            <PyQuiz
+              id="q5"
+              title="Q5 · log and log10"
+              prompt='Make a = math.log(math.e) and b = math.log10(100). Pass if a ≈ 1.0 and b == 2; code must use math.log and math.log10.'
+              example={`import math\na = math.log(math.e)\nb = math.log10(100)`}
+              check={({get, code}) => {
+                const a = get("a"); const b = get("b");
+                const usedLog = /math\.log\(/.test(code);
+                const usedLog10 = /math\.log10\(/.test(code);
+                const ok = usedLog && usedLog10 && approx(a, 1.0) && b === 2;
+                if (ok) onPass("q5");
+                return ok;
+              }}
+            />
+
+            <PyQuiz
+              id="q6"
+              title="Q6 · //, % and **"
+              prompt='Let x = 7//3, y = 7%3, z = 2**5. Pass if x==2, y==1, z==32; code must use //, %, and **.'
+              example={`x = 7//3\ny = 7%3\nz = 2**5`}
+              check={({get, code}) => {
+                const x = get("x"); const y = get("y"); const z = get("z");
+                const usedFloor = /\/\//.test(code);
+                const usedMod = /%/.test(code);
+                const usedPow = /\*\*/.test(code);
+                const ok = usedFloor && usedMod && usedPow && x===2 && y===1 && z===32;
+                if (ok) onPass("q6");
+                return ok;
+              }}
+            />
+
+            <PyQuiz
+              id="q7"
+              title="Q7 · comparisons and logic"
+              prompt='Use a = 5, b = 8; set ok = (a < b) and (b != a) and (b >= 8). Pass if ok is True; code must use and.'
+              example={`a = 5\nb = 8\nok = (a < b) and (b != a) and (b >= 8)`}
+              check={({get, code}) => {
+                const okv = get("ok");
+                const usedAnd = /\band\b/.test(code);
+                const ok = usedAnd && okv === true;
+                if (ok) onPass("q7");
+                return ok;
+              }}
+            />
+
+            <PyQuiz
+              id="q8"
+              title="Q8 · membership and identity"
+              prompt='Let s = "hello"; cond = ("e" in s) and ("x" not in s). Also do lst=[1,2]; c=lst; same = (c is lst). Pass if cond is True and same is True.'
+              example={`s = "hello"\ncond = ("e" in s) and ("x" not in s)\nlst = [1,2]\nc = lst\nsame = (c is lst)`}
+              check={({get, code}) => {
+                const cond = get("cond"); const same = get("same");
+                const usedIn = /\bin\b/.test(code);
+                const usedIs = /\bis\b/.test(code);
+                const ok = usedIn && usedIs && cond === true && same === true;
+                if (ok) onPass("q8");
+                return ok;
+              }}
+            />
+
+            <PyQuiz
+              id="q9"
+              title="Q9 · bitwise ops and shifts"
+              prompt='Use a = 6 and b = 3. Set bw_and = a & b, bw_or = a | b, bw_xor = a ^ b, l = a << 1, r = a >> 1. Pass if bw_and==2, bw_or==7, bw_xor==5, l==12, r==3; code must use &, |, ^, <<, >>.'
+              example={`a = 6\nb = 3\nbw_and = a & b\nbw_or = a | b\nbw_xor = a ^ b\nl = a << 1\nr = a >> 1`}
+              check={({get, code}) => {
+                const andv = get("bw_and"); const orv = get("bw_or"); const xorv = get("bw_xor");
+                const l = get("l"); const r = get("r");
+                const usedAnd = /&/.test(code);
+                const usedOr = /\|/.test(code);
+                const usedXor = /\^/.test(code);
+                const usedShL = /<</.test(code);
+                const usedShR = />>/.test(code);
+                const ok = usedAnd && usedOr && usedXor && usedShL && usedShR &&
+                  andv===2 && orv===7 && xorv===5 && l===12 && r===3;
+                if (ok) onPass("q9");
+                return ok;
+              }}
+            />
+
+            <Card title="Recap & Tips" footer="Use math for precise numeric work; choose the right operator for the job. Prefer radians for trig (use math.radians), and beware floating-point equality — compare within a small tolerance.">
+              <ul className="list-disc ml-6 space-y-1">
+                <li>Prefer <span className="mono">**</span> over <span className="mono">math.pow</span> for integers.</li>
+                <li>Use <span className="mono">//</span> for integer division, <span className="mono">%</span> for remainders.</li>
+                <li>Bitwise ops are for integers; logical ops are for booleans.</li>
+              </ul>
+            </Card>
+          </main>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<App />);
+  </script>
+</body>
+</html>

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Python Class · Lesson Hub (001–005)</title>
+  <title>Python Class · Lesson Hub (001–015)</title>
   <style>
     :root{
       --bg:#0f172a;
@@ -49,6 +49,9 @@
       box-shadow: var(--shadow);
       margin-top:18px;
     }
+    .panel h2{
+      margin:6px 6px 14px; font-size:18px; color:#93c5fd; letter-spacing:.3px;
+    }
     .grid{
       display:grid;
       grid-template-columns: repeat(5, minmax(0,1fr));
@@ -70,6 +73,7 @@
       padding:18px 16px 16px;
       transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease;
     }
+    .card.alt{ background:linear-gradient(180deg, rgba(255,255,255,.02), transparent), var(--card2); }
     .card:hover{
       transform: translateY(-3px);
       border-color: rgba(96,165,250,.8);
@@ -107,51 +111,153 @@
       <div class="logo">Py</div>
       <div>
         <div class="title">Python Class · Lesson Hub</div>
-        <div class="subtitle">Units 001 to 005 — fundamentals with live coding quizzes</div>
+        <div class="subtitle">Units 001 to 015 — categorized with quick links</div>
       </div>
     </header>
 
+    <!-- Core Basics -->
     <section class="panel">
+      <h2>Core Basics</h2>
       <div class="grid">
         <article class="card">
           <div class="num">001</div>
           <h3>Variables</h3>
-          <div class="badge"><span class="dot"></span> Basics: names, assignment, printing</div>
+          <div class="badge"><span class="dot"></span> Names, assignment, printing</div>
           <p class="desc">Create and update variables, naming rules, re-assignment, and <span class="mono">print()</span>.</p>
-          <a class="cta" href="001.html" aria-label="Open 001 Variables">Open 001</a>
+          <a class="cta" href="001.html">Open 001</a>
         </article>
-        <article class="card" style="background:linear-gradient(180deg, rgba(255,255,255,.02), transparent), var(--card2)">
+      </div>
+      <div class="footer">Start here. You will use variables in every later unit.</div>
+    </section>
+
+    <!-- Data Types -->
+    <section class="panel">
+      <h2>Data Types</h2>
+      <div class="grid">
+        <article class="card alt">
           <div class="num">002</div>
           <h3>Numbers</h3>
-          <div class="badge"><span class="dot"></span> Integers, floats, operators</div>
-          <p class="desc">Arithmetic, division vs floor division, modulo, exponent, precedence and parentheses.</p>
-          <a class="cta" href="002.html" aria-label="Open 002 Numbers">Open 002</a>
+          <div class="badge"><span class="dot"></span> Integers and floats</div>
+          <p class="desc">Arithmetic, division vs floor division, modulo, exponent, precedence.</p>
+          <a class="cta" href="002.html">Open 002</a>
         </article>
         <article class="card">
           <div class="num">003</div>
           <h3>Strings</h3>
           <div class="badge"><span class="dot"></span> Methods, slicing, f-strings</div>
-          <p class="desc">Concatenation, <span class="mono">len()</span>, slices, <span class="mono">split/join/replace</span>, and formatting.</p>
-          <a class="cta" href="003.html" aria-label="Open 003 Strings">Open 003</a>
+          <p class="desc">Concatenation, <span class="mono">len()</span>, slices, <span class="mono">split/join/replace</span>, formatting.</p>
+          <a class="cta" href="003.html">Open 003</a>
         </article>
-        <article class="card" style="background:linear-gradient(180deg, rgba(255,255,255,.02), transparent), var(--card2)">
+        <article class="card alt">
           <div class="num">004</div>
           <h3>Booleans</h3>
-          <div class="badge"><span class="dot"></span> True, False, logic and comparisons</div>
-          <p class="desc"><span class="mono">and / or / not</span>, truthiness, chained comparisons, and conditional expressions.</p>
-          <a class="cta" href="004.html" aria-label="Open 004 Booleans">Open 004</a>
+          <div class="badge"><span class="dot"></span> Logic & comparisons</div>
+          <p class="desc"><span class="mono">and / or / not</span>, truthiness, chained comparisons.</p>
+          <a class="cta" href="004.html">Open 004</a>
         </article>
         <article class="card">
           <div class="num">005</div>
           <h3>None & Emptiness</h3>
-          <div class="badge"><span class="dot"></span> Null value and empty containers</div>
-          <p class="desc"><span class="mono">None</span> identity checks, <span class="mono">bool(x)</span>, defaulting with <span class="mono">or</span>, and guards for missing values.</p>
-          <a class="cta" href="005.html" aria-label="Open 005 None and Emptiness">Open 005</a>
+          <div class="badge"><span class="dot"></span> Null value, empties</div>
+          <p class="desc"><span class="mono">None</span> identity, <span class="mono">bool(x)</span>, defaults with <span class="mono">or</span>.</p>
+          <a class="cta" href="005.html">Open 005</a>
+        </article>
+        <article class="card alt">
+          <div class="num">006</div>
+          <h3>Lists</h3>
+          <div class="badge"><span class="dot"></span> Ordered & mutable</div>
+          <p class="desc">Index/slice, methods, comprehension, copy vs alias.</p>
+          <a class="cta" href="006.html">Open 006</a>
+        </article>
+        <article class="card">
+          <div class="num">007</div>
+          <h3>Tuples</h3>
+          <div class="badge"><span class="dot"></span> Fixed-length sequences</div>
+          <p class="desc">Tuple literals, packing/unpacking, single-element tuples.</p>
+          <a class="cta" href="007.html">Open 007</a>
+        </article>
+        <article class="card alt">
+          <div class="num">008</div>
+          <h3>Sets</h3>
+          <div class="badge"><span class="dot"></span> Unique items</div>
+          <p class="desc">Add/remove, membership, unions/intersections, frozenset.</p>
+          <a class="cta" href="class008-sets.html">Open 008</a>
+        </article>
+        <article class="card">
+          <div class="num">009</div>
+          <h3>Dictionaries</h3>
+          <div class="badge"><span class="dot"></span> Hash tables</div>
+          <p class="desc">Key/value, updates, lookups, iteration order and views.</p>
+          <a class="cta" href="class009-dict.html">Open 009</a>
         </article>
       </div>
-      <div class="footer">
-        Tip: open each unit to practice with in-browser Python (Pyodide). All pages are standalone and can be used offline once loaded.
+      <div class="footer">These containers are the backbone of real Python programs.</div>
+    </section>
+
+    <!-- Built-ins & Math -->
+    <section class="panel">
+      <h2>Built-ins & Math</h2>
+      <div class="grid">
+        <article class="card">
+          <div class="num">010</div>
+          <h3>Built-in Functions</h3>
+          <div class="badge"><span class="dot"></span> Essentials: print, len, range…</div>
+          <p class="desc">Everyday helpers you will use in almost every file.</p>
+          <a class="cta" href="class010-builtins.html">Open 010</a>
+        </article>
+        <article class="card alt">
+          <div class="num">011</div>
+          <h3>Math & Operators</h3>
+          <div class="badge"><span class="dot"></span> math, operators</div>
+          <p class="desc">Arithmetic vs bitwise, comparisons, and the <span class="mono">math</span> module.</p>
+          <a class="cta" href="class011-math-operators.html">Open 011</a>
+        </article>
       </div>
+      <div class="footer">Know your tools: built-ins and operators keep code short and clear.</div>
+    </section>
+
+    <!-- Control Flow -->
+    <section class="panel">
+      <h2>Control Flow</h2>
+      <div class="grid">
+        <article class="card">
+          <div class="num">012</div>
+          <h3>If / Elif / Else</h3>
+          <div class="badge"><span class="dot"></span> Branching</div>
+          <p class="desc">Conditions, guards, and safe patterns to avoid crashes.</p>
+          <a class="cta" href="class012-if-else.html">Open 012</a>
+        </article>
+        <article class="card alt">
+          <div class="num">013</div>
+          <h3>For Loops</h3>
+          <div class="badge"><span class="dot"></span> Iterate known sequences</div>
+          <p class="desc">range/enumerate, breaks/continues, for–else, nested loops.</p>
+          <a class="cta" href="class013-for-loop.html">Open 013</a>
+        </article>
+        <article class="card">
+          <div class="num">014</div>
+          <h3>While Loops</h3>
+          <div class="badge"><span class="dot"></span> Repeat until condition</div>
+          <p class="desc">Sentinels, while–else, input loops, termination guarantees.</p>
+          <a class="cta" href="class014-while.html">Open 014</a>
+        </article>
+      </div>
+      <div class="footer">Pick <span class="mono">for</span> for known counts/iterables; pick <span class="mono">while</span> for open-ended repetition.</div>
+    </section>
+
+    <!-- Functions -->
+    <section class="panel">
+      <h2>Functions</h2>
+      <div class="grid">
+        <article class="card alt">
+          <div class="num">015</div>
+          <h3>Functions</h3>
+          <div class="badge"><span class="dot"></span> def, return, args</div>
+          <p class="desc">Defaults, keywords, *args/**kwargs, scope, recursion, HOFs.</p>
+          <a class="cta" href="class015-functions.html">Open 015</a>
+        </article>
+      </div>
+      <div class="footer">Write small, testable functions. They are the building blocks of your projects.</div>
     </section>
   </div>
 </body>

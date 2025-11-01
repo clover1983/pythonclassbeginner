@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Python Class 14 · While Loops (Hands-on)</title>
+  <!-- Tailwind (CDN) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- React 18 UMD + ReactDOM UMD (development builds) -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <!-- Babel Standalone for in-browser JSX transform -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- Pyodide v0.29: real Python in browser -->
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.29.0/full/pyodide.js"></script>
+  <style>
+    .spin { animation: spin 1s linear infinite; }
+    @keyframes spin { from {transform:rotate(0)} to {transform:rotate(360deg)} }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace; }
+  </style>
+</head>
+<body class="bg-slate-50">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useEffect, useState } = React;
+
+    // --- Boot Pyodide (v0.29) and inject helpers ---
+    const pyodideReadyPromise = (async () => {
+      const p = await loadPyodide({
+        indexURL: "https://cdn.jsdelivr.net/pyodide/v0.29.0/full/"
+      });
+      await p.runPythonAsync([
+        "import sys, io",
+        "def _auto_strip_lines(src):",
+        "    s = src.replace('\\r\\n','\\n').replace('\\r','\\n')",
+        "    lines = s.split('\\n')",
+        "    # keep indentation; only trim the end of each line",
+        "    return '\\n'.join([ln.rstrip() for ln in lines])",
+        "",
+        "def run_user(src):",
+        "    code = _auto_strip_lines(src)",
+        "    glb = {}",
+        "    _out = io.StringIO(); _err = io.StringIO()",
+        "    old_out, old_err = sys.stdout, sys.stderr",
+        "    sys.stdout, sys.stderr = _out, _err",
+        "    try:",
+        "        exec(code, glb, glb)",
+        "    finally:",
+        "        sys.stdout, sys.stderr = old_out, old_err",
+        "    return {'glb': glb, 'out': _out.getvalue(), 'err': _err.getvalue(), 'code': code}",
+      ].join('\n'));
+      return p;
+    })().catch(e => {
+      console.error("Pyodide init failed:", e);
+      alert("Pyodide init failed: " + e.message);
+    });
+
+    function usePyRunner() {
+      const [pyodide, setPyodide] = useState(null);
+      const [err, setErr] = useState(null);
+      useEffect(() => {
+        let mounted = true;
+        pyodideReadyPromise.then(p => mounted && setPyodide(p)).catch(e => setErr(e));
+        return () => { mounted = false; };
+      }, []);
+      return { pyodide, err };
+    }
+
+    // Keep glb as PyProxy; convert strings safely
+    async function runUser(pyodide, code) {
+      const run_user = pyodide.globals.get("run_user");
+      const res = run_user(code); // dict PyProxy
+      const getJs = (obj, key) => {
+        const v = obj.get(key);
+        return (v && typeof v.toJs === "function") ? v.toJs() : v;
+      };
+      const glb = res.get("glb");                 // PyProxy(dict) (keep as proxy)
+      const out = getJs(res, "out");              // string
+      const err = getJs(res, "err");              // string
+      const codeNorm = getJs(res, "code");        // string
+      res.destroy && res.destroy();
+      return { glb, out, err, code: codeNorm };
+    }
+
+    function Code({children}){
+      return <pre className="bg-gray-950 text-gray-100 p-4 rounded-2xl text-sm overflow-auto shadow-inner mono"><code>{children}</code></pre>;
+    }
+    function Card({title, children, footer}){
+      return (
+        <div className="rounded-2xl shadow-lg border border-gray-200 bg-white p-5">
+          <div className="text-xl font-semibold mb-3">{title}</div>
+          <div className="space-y-3">{children}</div>
+          {footer && <div className="pt-4 mt-4 border-t text-sm text-gray-600">{footer}</div>}
+        </div>
+      );
+    }
+    function Pill({ok, text}){
+      const cls = ok == null ? "bg-gray-100 text-gray-800" : ok ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800";
+      return <span className={"inline-flex items-center px-3 py-1 rounded-full text-sm font-medium " + cls}>{text}</span>;
+    }
+    function Loader({text="Loading Python..."}){
+      return (
+        <div className="inline-flex items-center gap-2 text-sm text-gray-600">
+          <svg className="w-4 h-4 spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="3" opacity="0.3"/><path d="M21 12a 9 9 0 0 0-9-9" stroke="currentColor" strokeWidth="3"/></svg>
+          <span>{text}</span>
+        </div>
+      );
+    }
+
+    function Intro(){
+      return (
+        <Card title="Class 14: While Loops — repeat *until* a condition changes">
+          <ul className="list-disc ml-6 space-y-1">
+            <li>Shape: <span className="mono">while condition:</span> block; the loop runs while the condition is True.</li>
+            <li>Use <span className="mono">while</span> when the number of iterations is unknown beforehand (e.g., read until user types a password).</li>
+            <li>Use <span className="mono">for</span> when you iterate a known-length iterable (range, list, dict, file lines).</li>
+            <li><span className="mono">break</span> exits early; <span className="mono">continue</span> skips to the next check; <span className="mono">while–else</span> runs <span className="mono">else</span> only if the loop didn’t break.</li>
+          </ul>
+        </Card>
+      );
+    }
+
+    function Compare(){
+      return (
+        <Card title="For vs While — when to choose which" footer="Rule of thumb: known count/iterable → for; unknown repeats until a condition → while.">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <div className="font-semibold mb-2">for (known count):</div>
+              <Code>{`total = 0\nfor n in range(5):\n    total += n`}</Code>
+            </div>
+            <div>
+              <div className="font-semibold mb-2">while (repeat until condition):</div>
+              <Code>{`password = \"\"\nwhile password != \"python\":\n    print(f\"current: {password}\")\n    # input stub in this page: define your own input()\n    password = input(\"Enter password: \")`}</Code>
+            </div>
+          </div>
+        </Card>
+      );
+    }
+
+    // Generic quiz component
+    function PyQuiz({id, title, prompt, starter="", example, check}){
+      const { pyodide, err } = usePyRunner();
+      const [code, setCode] = useState(starter);
+      const [status, setStatus] = useState({ ok: null, text: "Waiting for input" });
+
+      async function run(){
+        if(!pyodide){ setStatus({ok:null, text:"Python not ready"}); return; }
+        setStatus({ok:null, text:"Running..."});
+        try{
+          const res = await runUser(pyodide, code);
+          const glb = res.glb;
+          const out = res.out;
+          const err = res.err;
+          const codeNorm = res.code;
+          const get = (name) => {
+            const pyv = glb.get(name);
+            if (pyv === undefined || pyv === null) return undefined;
+            return (typeof pyv.toJs === "function") ? pyv.toJs() : pyv;
+          };
+
+          const qpass = await check({glb, out, err, code: codeNorm, get});
+
+          // Snapshot variables
+          let snapshot = {};
+          try {
+            const ks = glb.keys();
+            const names = (typeof ks.toJs === "function") ? ks.toJs() : [];
+            for (const k of names) {
+              const v = glb.get(k);
+              snapshot[k] = (v && typeof v.toJs === "function") ? v.toJs() : v;
+            }
+          } catch (_) {}
+
+          setStatus({
+            ok: qpass,
+            text: qpass ? "Correct" : "Not correct. See hints.",
+            lastOut: out,
+            lastErr: err,
+            lastVars: snapshot
+          });
+
+          glb.destroy && glb.destroy();
+
+        }catch(e){
+          setStatus({ok:false, text:"Python error: " + e.message});
+        }
+      }
+
+      return (
+        <Card title={title}>
+          <p>{prompt}</p>
+          <textarea className="w-full h-96 border rounded-xl p-3 mono" value={code} onChange={e=>setCode(e.target.value)} placeholder={example || "Write Python here..."} />
+          <div className="flex items-center gap-3">
+            <button onClick={run} className="px-4 py-2 rounded-xl bg-blue-600 text-white shadow">Run</button>
+            <Pill ok={status.ok} text={status.text} />
+            {(status.lastOut || status.lastErr) && (
+              <div className="text-xs mono text-gray-700">
+                {status.lastOut ? <div>stdout: {String(status.lastOut)}</div> : null}
+                {status.lastErr ? <div>stderr: {String(status.lastErr)}</div> : null}
+              </div>
+            )}
+            {status.lastVars && Object.keys(status.lastVars).length > 0 && (
+              <pre className="bg-slate-100 text-slate-800 text-xs p-2 rounded mono overflow-auto">
+                {JSON.stringify(status.lastVars, null, 2)}
+              </pre>
+            )}
+            {!pyodide && <Loader />}
+          </div>
+          {example && <Code>{example}</Code>}
+        </Card>
+      );
+    }
+
+    function App(){
+      const [score, setScore] = useState(0);
+      const [done, setDone] = useState({});
+      function onPass(key){
+        if (!done[key]) {
+          setDone(prev => ({...prev, [key]: true}));
+          setScore(s => s + 1);
+        }
+      }
+      const total = 9;
+      const progress = Math.round(Object.keys(done).length/total*100);
+
+      return (
+        <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100">
+          <header className="max-w-5xl mx-auto px-6 py-8">
+            <h1 className="text-3xl font-bold tracking-tight">Python Class 14 · While Loops (Hands-on)</h1>
+            <p className="text-gray-600 mt-1">Complete {total} quizzes. Real Python runs in your browser.</p>
+          </header>
+
+          <main className="max-w-5xl mx-auto px-6 pb-20 space-y-6">
+            <div className="rounded-2xl border bg-white p-5 flex items-center gap-4 shadow-sm">
+              <div className="w-28">
+                <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+                  <div className="h-3 bg-blue-600" style={{ width: progress + "%" }} />
+                </div>
+              </div>
+              <div className="text-sm text-gray-700">Progress: {Object.keys(done).length}/{total} · Score: {score}</div>
+              <div className="ml-auto text-sm text-gray-500">Tip: Prefer while for unknown repeat counts.</div>
+            </div>
+
+            <Intro />
+            <Compare />
+
+            <PyQuiz
+              id="q1"
+              title="Q1 · sum 0..4 with while"
+              prompt='Use a while-loop to compute total = 0+1+2+3+4. Start i = 0 and loop while i < 5. Pass if total == 10 and code uses while.'
+              example={`total = 0\ni = 0\nwhile i < 5:\n    total += i\n    i += 1`}
+              check={({get, code}) => {
+                const total = get("total");
+                const usedWhile = /\bwhile\b/.test(code);
+                const pass = usedWhile && total === 10;
+                if (pass) onPass("q1");
+                return pass;
+              }}
+            />
+
+            <PyQuiz
+              id="q2"
+              title="Q2 · first multiple of 7 (break)"
+              prompt='Find first7 by looping i from 1 upward in a while True loop, incrementing i each time, breaking when i%7==0. Pass if first7 == 7 and code uses break.'
+              example={`first7 = None\ni = 1\nwhile True:\n    if i % 7 == 0:\n        first7 = i\n        break\n    i += 1`}
+              check={({get, code}) => {
+                const first7 = get("first7");
+                const hasBreak = /\bbreak\b/.test(code);
+                const pass = hasBreak && first7 === 7;
+                if (pass) onPass("q2");
+                return pass;
+              }}
+            />
+
+            <PyQuiz
+              id="q3"
+              title="Q3 · continue for odds"
+              prompt='Collect odds under 6 into odds = [1,3,5] using a while-loop and continue. Pass if odds == [1,3,5] and code uses continue.'
+              example={`odds = []\ni = 0\nwhile i < 6:\n    i += 1\n    if i % 2 == 0:\n        continue\n    odds.append(i)`}
+              check={({get, code}) => {
+                const odds = get("odds");
+                const hasCont = /\bcontinue\b/.test(code);
+                const ok = Array.isArray(odds) && odds.join(",") === "1,3,5";
+                const pass = hasCont && ok;
+                if (pass) onPass("q3");
+                return pass;
+              }}
+            />
+
+            <PyQuiz
+              id="q4"
+              title="Q4 · sentinel value"
+              prompt='Given xs = [3,2,0,5], read values with an index in a while loop until you hit 0; store all values before 0 into before. Pass if before == [3,2].'
+              example={`xs = [3,2,0,5]\nbefore = []\ni = 0\nwhile i < len(xs) and xs[i] != 0:\n    before.append(xs[i])\n    i += 1`}
+              check={({get, code}) => {
+                const before = get("before");
+                const ok = Array.isArray(before) && before.join(",") === "3,2";
+                const pass = ok && /\bwhile\b/.test(code);
+                if (pass) onPass("q4");
+                return pass;
+              }}
+            />
+
+            <PyQuiz
+              id="q5"
+              title="Q5 · while–else (not found)"
+              prompt='Search for 13 in nums = [10,11,12] using while with an else: clause; set found = True if break happens, else found = False. Pass if found is False and code uses while...else.'
+              example={`nums = [10,11,12]\nfound = False\ni = 0\nwhile i < len(nums):\n    if nums[i] == 13:\n        found = True\n        break\n    i += 1\nelse:\n    found = False`}
+              check={({get, code}) => {
+                const found = get("found");
+                const hasElse = /while[\s\S]*else\s*:/.test(code);
+                const pass = hasElse && found === false;
+                if (pass) onPass("q5");
+                return pass;
+              }}
+            />
+
+            <PyQuiz
+              id="q6"
+              title="Q6 · translate for → while"
+              prompt='Make squares = [0,1,4,9,16] using a while loop (not a for). Pass if list matches and code contains while but not for.'
+              example={`squares = []\ni = 0\nwhile i < 5:\n    squares.append(i*i)\n    i += 1`}
+              check={({get, code}) => {
+                const squares = get("squares");
+                const ok = Array.isArray(squares) && squares.length === 5 && squares[4] === 16;
+                const usedWhile = /\bwhile\b/.test(code) && !/\bfor\b/.test(code);
+                const pass = ok && usedWhile;
+                if (pass) onPass("q6");
+                return pass;
+              }}
+            />
+
+            <PyQuiz
+              id="q7"
+              title="Q7 · simulate input in a while-loop"
+              prompt='Simulate user input to unlock password \"python\". Prepare inputs = [\"\", \"python\"]. Define input = lambda prompt=\"\": inputs.pop(0). Loop while password != \"python\": call input each time. At the end, attempts should be 2 and password == \"python\". Pass if so and code uses input( and while.'
+              example={`inputs = [\"\", \"python\"]\ninput = lambda prompt=\"\": inputs.pop(0)\npassword = \"\"\nattempts = 0\nwhile password != \"python\":\n    password = input(\"Enter password: \")\n    attempts += 1`}
+              check={({get, code}) => {
+                const attempts = get("attempts");
+                const password = get("password");
+                const usedInput = /input\(/.test(code);
+                const usedWhile = /\bwhile\b/.test(code);
+                const pass = usedInput && usedWhile && attempts === 2 && password === "python";
+                if (pass) onPass("q7");
+                return pass;
+              }}
+            />
+
+            <PyQuiz
+              id="q8"
+              title="Q8 · ensure loop terminates"
+              prompt='Start with n = 5. Write a while loop that decrements n until it reaches 0. Pass if n == 0 and code uses while.'
+              example={`n = 5\nwhile n > 0:\n    n -= 1`}
+              check={({get, code}) => {
+                const n = get("n");
+                const usedWhile = /\bwhile\b/.test(code);
+                const pass = usedWhile && n === 0;
+                if (pass) onPass("q8");
+                return pass;
+              }}
+            />
+
+            <PyQuiz
+              id="q9"
+              title="Q9 · choose the right loop"
+              prompt='Set choice = \"while\" if you should \"repeat until a condition becomes False\"; set choice = \"for\" otherwise. For this task, set choice to \"while\". Pass if choice == \"while\".'
+              example={`choice = \"while\"`}
+              check={({get}) => {
+                const choice = get("choice");
+                const pass = choice === "while";
+                if (pass) onPass("q9");
+                return pass;
+              }}
+            />
+
+            <Card title="Recap & Tips" footer="Prefer while for open-ended repetition where the loop ends based on a condition; prefer for when stepping through a known iterable or count.">
+              <ul className="list-disc ml-6 space-y-1">
+                <li>Always make progress toward the condition in a while-loop to avoid infinite loops.</li>
+                <li>For input-driven loops in this page, simulate input with a small list and a custom input() shim.</li>
+                <li>Consider while–else for search patterns without found/break.</li>
+              </ul>
+            </Card>
+          </main>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<App />);
+  </script>
+</body>
+</html>

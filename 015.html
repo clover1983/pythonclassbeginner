@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Python Class 15 · Functions (Hands-on)</title>
+  <!-- Tailwind (CDN) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- React 18 UMD + ReactDOM UMD (development builds) -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <!-- Babel Standalone for in-browser JSX transform -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- Pyodide v0.29: real Python in browser -->
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.29.0/full/pyodide.js"></script>
+  <style>
+    .spin { animation: spin 1s linear infinite; }
+    @keyframes spin { from {transform:rotate(0)} to {transform:rotate(360deg)} }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace; }
+  </style>
+</head>
+<body class="bg-slate-50">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useEffect, useState } = React;
+
+    // --- Boot Pyodide (v0.29) and inject helpers ---
+    const pyodideReadyPromise = (async () => {
+      const p = await loadPyodide({
+        indexURL: "https://cdn.jsdelivr.net/pyodide/v0.29.0/full/"
+      });
+      await p.runPythonAsync([
+        "import sys, io",
+        "def _auto_strip_lines(src):",
+        "    s = src.replace('\\r\\n','\\n').replace('\\r','\\n')",
+        "    lines = s.split('\\n')",
+        "    # keep indentation; only trim the end of each line",
+        "    return '\\n'.join([ln.rstrip() for ln in lines])",
+        "",
+        "def run_user(src):",
+        "    code = _auto_strip_lines(src)",
+        "    glb = {}",
+        "    _out = io.StringIO(); _err = io.StringIO()",
+        "    old_out, old_err = sys.stdout, sys.stderr",
+        "    sys.stdout, sys.stderr = _out, _err",
+        "    try:",
+        "        exec(code, glb, glb)",
+        "    finally:",
+        "        sys.stdout, sys.stderr = old_out, old_err",
+        "    return {'glb': glb, 'out': _out.getvalue(), 'err': _err.getvalue(), 'code': code}",
+      ].join('\n'));
+      return p;
+    })().catch(e => {
+      console.error("Pyodide init failed:", e);
+      alert("Pyodide init failed: " + e.message);
+    });
+
+    function usePyRunner() {
+      const [pyodide, setPyodide] = useState(null);
+      const [err, setErr] = useState(null);
+      useEffect(() => {
+        let mounted = true;
+        pyodideReadyPromise.then(p => mounted && setPyodide(p)).catch(e => setErr(e));
+        return () => { mounted = false; };
+      }, []);
+      return { pyodide, err };
+    }
+
+    // Keep glb as PyProxy; convert strings safely
+    async function runUser(pyodide, code) {
+      const run_user = pyodide.globals.get("run_user");
+      const res = run_user(code); // dict PyProxy
+      const getJs = (obj, key) => {
+        const v = obj.get(key);
+        return (v && typeof v.toJs === "function") ? v.toJs() : v;
+      };
+      const glb = res.get("glb");                 // PyProxy(dict)
+      const out = getJs(res, "out");              // string
+      const err = getJs(res, "err");              // string
+      const codeNorm = getJs(res, "code");        // string
+      res.destroy && res.destroy();
+      return { glb, out, err, code: codeNorm };
+    }
+
+    function Code({children}){
+      return <pre className="bg-gray-950 text-gray-100 p-4 rounded-2xl text-sm overflow-auto shadow-inner mono"><code>{children}</code></pre>;
+    }
+    function Card({title, children, footer}){
+      return (
+        <div className="rounded-2xl shadow-lg border border-gray-200 bg-white p-5">
+          <div className="text-xl font-semibold mb-3">{title}</div>
+          <div className="space-y-3">{children}</div>
+          {footer && <div className="pt-4 mt-4 border-t text-sm text-gray-600">{footer}</div>}
+        </div>
+      );
+    }
+    function Pill({ok, text}){
+      const cls = ok == null ? "bg-gray-100 text-gray-800" : ok ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800";
+      return <span className={"inline-flex items-center px-3 py-1 rounded-full text-sm font-medium " + cls}>{text}</span>;
+    }
+    function Loader({text="Loading Python..."}){
+      return (
+        <div className="inline-flex items-center gap-2 text-sm text-gray-600">
+          <svg className="w-4 h-4 spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="3" opacity="0.3"/><path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth="3"/></svg>
+          <span>{text}</span>
+        </div>
+      );
+    }
+
+    function Intro(){
+      return (
+        <Card title="Class 15: Functions — define, call, return, and document">
+          <ul className="list-disc ml-6 space-y-1">
+            <li>Shape: <span className="mono">def name(params):</span> block; use <span className="mono">return</span> to send a value back.</li>
+            <li>Arguments: positional, keyword, defaults (<span className="mono">b=0</span>), arbitrary <span className="mono">*args</span> and <span className="mono">**kwargs</span>.</li>
+            <li>Scope: variables inside a function are local; use <span className="mono">nonlocal</span>/<span className="mono">global</span> carefully.</li>
+            <li>Docstring: the first triple-quoted string becomes <span className="mono">__doc__</span>.</li>
+            <li>Pure functions depend only on inputs and return results; avoid hidden side effects when possible.</li>
+          </ul>
+        </Card>
+      );
+    }
+
+    // Generic quiz component
+    function PyQuiz({id, title, prompt, starter="", example, check}){
+      const { pyodide, err } = usePyRunner();
+      const [code, setCode] = useState(starter);
+      const [status, setStatus] = useState({ ok: null, text: "Waiting for input" });
+
+      async function run(){
+        if(!pyodide){ setStatus({ok:null, text:"Python not ready"}); return; }
+        setStatus({ok:null, text:"Running..."});
+        try{
+          const res = await runUser(pyodide, code);
+          const glb = res.glb;
+          const out = res.out;
+          const err = res.err;
+          const codeNorm = res.code;
+          const get = (name) => {
+            const pyv = glb.get(name);
+            if (pyv === undefined || pyv === null) return undefined;
+            return (typeof pyv.toJs === "function") ? v.toJs() : pyv;
+          };
+
+          const qpass = await check({glb, out, err, code: codeNorm, get});
+
+          // Snapshot variables
+          let snapshot = {};
+          try {
+            const ks = glb.keys();
+            const names = (typeof ks.toJs === "function") ? ks.toJs() : [];
+            for (const k of names) {
+              const v = glb.get(k);
+              snapshot[k] = (v && typeof v.toJs === "function") ? v.toJs() : v;
+            }
+          } catch (_) {}
+
+          setStatus({
+            ok: qpass,
+            text: qpass ? "Correct" : "Not correct. See hints.",
+            lastOut: out,
+            lastErr: err,
+            lastVars: snapshot
+          });
+
+          glb.destroy && glb.destroy();
+
+        }catch(e){
+          setStatus({ok:false, text:"Python error: " + e.message});
+        }
+      }
+
+      return (
+        <Card title={title}>
+          <p>{prompt}</p>
+          <textarea className="w-full h-96 border rounded-xl p-3 mono" value={code} onChange={e=>setCode(e.target.value)} placeholder={example || "Write Python here..."} />
+          <div className="flex items-center gap-3">
+            <button onClick={run} className="px-4 py-2 rounded-xl bg-blue-600 text-white shadow">Run</button>
+            <Pill ok={status.ok} text={status.text} />
+            {(status.lastOut || status.lastErr) && (
+              <div className="text-xs mono text-gray-700">
+                {status.lastOut ? <div>stdout: {String(status.lastOut)}</div> : null}
+                {status.lastErr ? <div>stderr: {String(status.lastErr)}</div> : null}
+              </div>
+            )}
+            {status.lastVars && Object.keys(status.lastVars).length > 0 && (
+              <pre className="bg-slate-100 text-slate-800 text-xs p-2 rounded mono overflow-auto">
+                {JSON.stringify(status.lastVars, null, 2)}
+              </pre>
+            )}
+            {!pyodide && <Loader />}
+          </div>
+          {example && <Code>{example}</Code>}
+        </Card>
+      );
+    }
+
+    function App(){
+      const [score, setScore] = useState(0);
+      const [done, setDone] = useState({});
+      function onPass(key){
+        if (!done[key]) {
+          setDone(prev => ({...prev, [key]: true}));
+          setScore(s => s + 1);
+        }
+      }
+      const total = 9;
+      const progress = Math.round(Object.keys(done).length/total*100);
+
+      return (
+        <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100">
+          <header className="max-w-5xl mx-auto px-6 py-8">
+            <h1 className="text-3xl font-bold tracking-tight">Python Class 15 · Functions (Hands-on)</h1>
+            <p className="text-gray-600 mt-1">Complete {total} quizzes. Real Python runs in your browser.</p>
+          </header>
+
+          <main className="max-w-5xl mx-auto px-6 pb-20 space-y-6">
+            <div className="rounded-2xl border bg-white p-5 flex items-center gap-4 shadow-sm">
+              <div className="w-28">
+                <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+                  <div className="h-3 bg-blue-600" style={{ width: progress + "%" }} />
+                </div>
+              </div>
+              <div className="text-sm text-gray-700">Progress: {Object.keys(done).length}/{total} · Score: {score}</div>
+              <div className="ml-auto text-sm text-gray-500">Tip: Keep functions small and testable.</div>
+            </div>
+
+            <Intro />
+
+            <PyQuiz
+              id="q1"
+              title="Q1 · define and call"
+              prompt='Define add(a, b) that returns a+b. Call it to set x = add(2, 3). Pass if x == 5 and code contains def add('
+              example={`def add(a, b):\n    return a + b\nx = add(2, 3)`}
+              check={({get, code}) => {
+                const x = get("x");
+                const hasDef = /def\s+add\s*\(/.test(code);
+                const pass = hasDef && x === 5;
+                if (pass) onPass("q1");
+                return pass;
+              }}
+            />
+
+            <PyQuiz
+              id="q2"
+              title="Q2 · default argument"
+              prompt='Define greet(name, punct="!") that returns name+punct. Set a = greet("Bob") and b = greet("Ann", "?"). Pass if a == "Bob!" and b == "Ann?".'
+              example={`def greet(name, punct="!"):\n    return name + punct\na = greet("Bob")\nb = greet("Ann", "?")`}
+              check={({get}) => {
+                const a = get("a"); const b = get("b");
+                const pass = a === "Bob!" && b === "Ann?";
+                if (pass) onPass("q2");
+                return pass;
+              }}
+            />
+
+            <PyQuiz
+              id="q3"
+              title="Q3 · keyword arguments"
+              prompt='Define area(width, height) returning width*height. Call as area(height=3, width=4) and store into s. Pass if s == 12 and code uses keyword assignment.'
+              example={`def area(width, height):\n    return width * height\ns = area(height=3, width=4)`}
+              check={({get, code}) => {
+                const s = get("s");
+                const usedKw = /area\s*\(\s*height\s*=/.test(code) || /area\s*\(\s*width\s*=/.test(code);
+                const pass = usedKw && s === 12;
+                if (pass) onPass("q3");
+                return pass;
+              }}
+            />
+
+            <PyQuiz
+              id="q4"
+              title="Q4 · *args"
+              prompt='Define add_all(*args) that returns the sum of its numbers. Set t = add_all(1,2,3). Pass if t == 6 and code uses *args.'
+              example={`def add_all(*args):\n    s = 0\n    for n in args:\n        s += n\n    return s\nt = add_all(1,2,3)`}
+              check={({get, code}) => {
+                const t = get("t");
+                const used = /\*args/.test(code);
+                const pass = used && t === 6;
+                if (pass) onPass("q4");
+                return pass;
+              }}
+            />
+
+            <PyQuiz
+              id="q5"
+              title="Q5 · **kwargs"
+              prompt='Define pick(**kwargs) that returns kwargs.get("x", 0) + kwargs.get("y", 0). Set v = pick(x=2, y=5). Pass if v == 7 and code uses **kwargs.'
+              example={`def pick(**kwargs):\n    return kwargs.get("x", 0) + kwargs.get("y", 0)\nv = pick(x=2, y=5)`}
+              check={({get, code}) => {
+                const v = get("v");
+                const used = /\*\*kwargs/.test(code);
+                const pass = used && v === 7;
+                if (pass) onPass("q5");
+                return pass;
+              }}
+            />
+
+            <PyQuiz
+              id="q6"
+              title="Q6 · docstring"
+              prompt='Write a function f() with a one-line docstring "do something". Set doc = f.__doc__. Pass if doc contains "do something" and code includes triple quotes.'
+              example={`def f():\n    \"\"\"do something\"\"\"\n    return None\ndoc = f.__doc__`}
+              check={({get, code}) => {
+                const doc = get("doc");
+                const hasTriple = /\"\"\"/.test(code) || /\'\'\'/.test(code);
+                const pass = hasTriple && (doc && doc.indexOf("do something") !== -1);
+                if (pass) onPass("q6");
+                return pass;
+              }}
+            />
+
+            <PyQuiz
+              id="q7"
+              title="Q7 · scope (local variables)"
+              prompt='Inside g(), create local v = 3 and return it. After calling r = g(), ensure that "v" is not defined globally (NameError if accessed). Pass if r == 3.'
+              example={`def g():\n    v = 3\n    return v\nr = g()`}
+              check={({get}) => {
+                const r = get("r");
+                const pass = r === 3;
+                if (pass) onPass("q7");
+                return pass;
+              }}
+            />
+
+            <PyQuiz
+              id="q8"
+              title="Q8 · recursion (factorial)"
+              prompt='Define fact(n) using recursion: 0! = 1; n! = n*fact(n-1). Set f5 = fact(5). Pass if f5 == 120 and code calls fact inside fact.'
+              example={`def fact(n):\n    if n == 0:\n        return 1\n    return n * fact(n-1)\nf5 = fact(5)`}
+              check={({get, code}) => {
+                const f5 = get("f5");
+                const selfCall = /def\s+fact\s*\([\s\S]*\):[\s\S]*fact\s*\(\s*n\s*-\s*1\s*\)/.test(code);
+                const pass = selfCall && f5 === 120;
+                if (pass) onPass("q8");
+                return pass;
+              }}
+            />
+
+            <PyQuiz
+              id="q9"
+              title="Q9 · higher-order function"
+              prompt='Write apply_twice(f, x) that returns f(f(x)). With inc = lambda n: n+1, set z = apply_twice(inc, 10). Pass if z == 12.'
+              example={`def apply_twice(f, x):\n    return f(f(x))\ninc = lambda n: n+1\nz = apply_twice(inc, 10)`}
+              check={({get}) => {
+                const z = get("z");
+                const pass = z === 12;
+                if (pass) onPass("q9");
+                return pass;
+              }}
+            />
+
+            <Card title="Recap & Tips" footer="Favor small, pure functions; document with a clear one-line docstring and examples. Use defaults/keywords for clarity, *args/**kwargs for flexibility, and test recursive functions carefully.">
+              <ul className="list-disc ml-6 space-y-1">
+                <li>Inputs → function → output. Keep side effects explicit.</li>
+                <li>Prefer keyword arguments for readability when there are many parameters.</li>
+                <li>For performance-sensitive code, avoid expensive defaults evaluated at definition time.</li>
+              </ul>
+            </Card>
+          </main>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<App />);
+  </script>
+</body>
+</html>

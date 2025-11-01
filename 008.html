@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Python Class 8 · Sets (Hands-on)</title>
+  <!-- Tailwind (CDN) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- React 18 UMD + ReactDOM UMD (development builds) -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <!-- Babel Standalone for in-browser JSX transform -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- Pyodide v0.29: real Python in browser -->
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.29.0/full/pyodide.js"></script>
+  <style>
+    .spin { animation: spin 1s linear infinite; }
+    @keyframes spin { from {transform:rotate(0)} to {transform:rotate(360deg)} }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace; }
+  </style>
+</head>
+<body class="bg-slate-50">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useEffect, useState } = React;
+
+    // --- Boot Pyodide (v0.29) and inject helpers ---
+    const pyodideReadyPromise = (async () => {
+      const p = await loadPyodide({
+        indexURL: "https://cdn.jsdelivr.net/pyodide/v0.29.0/full/"
+      });
+      await p.runPythonAsync([
+        "import sys, io",
+        "def _auto_strip_lines(src):",
+        "    s = src.replace('\\r\\n','\\n').replace('\\r','\\n')",
+        "    lines = s.split('\\n')",
+        "    # keep indentation; only trim the end of each line",
+        "    return '\\n'.join([ln.rstrip() for ln in lines])",
+        "",
+        "def run_user(src):",
+        "    code = _auto_strip_lines(src)",
+        "    glb = {}",
+        "    _out = io.StringIO(); _err = io.StringIO()",
+        "    old_out, old_err = sys.stdout, sys.stderr",
+        "    sys.stdout, sys.stderr = _out, _err",
+        "    try:",
+        "        exec(code, glb, glb)",
+        "    finally:",
+        "        sys.stdout, sys.stderr = old_out, old_err",
+        "    return {'glb': glb, 'out': _out.getvalue(), 'err': _err.getvalue(), 'code': code}",
+      ].join('\n'));
+      return p;
+    })().catch(e => {
+      console.error("Pyodide init failed:", e);
+      alert("Pyodide init failed: " + e.message);
+    });
+
+    function usePyRunner() {
+      const [pyodide, setPyodide] = useState(null);
+      const [err, setErr] = useState(null);
+      useEffect(() => {
+        let mounted = true;
+        pyodideReadyPromise.then(p => mounted && setPyodide(p)).catch(e => setErr(e));
+        return () => { mounted = false; };
+      }, []);
+      return { pyodide, err };
+    }
+
+    // Keep glb as PyProxy; convert strings safely
+    async function runUser(pyodide, code) {
+      const run_user = pyodide.globals.get("run_user");
+      const res = run_user(code); // dict PyProxy
+      const getJs = (obj, key) => {
+        const v = obj.get(key);
+        return (v && typeof v.toJs === "function") ? v.toJs() : v;
+      };
+      const glb = res.get("glb");                 // PyProxy(dict)
+      const out = getJs(res, "out");              // string
+      const err = getJs(res, "err");              // string
+      const codeNorm = getJs(res, "code");        // string
+      res.destroy && res.destroy();
+      return { glb, out, err, code: codeNorm };
+    }
+
+    // --- Set helpers for Pyodide toJs conversions ---
+    function isSetLike(x){
+      return x && ((typeof x.has === "function" && typeof x.size === "number") || Array.isArray(x));
+    }
+    function setSize(x){
+      if(!x) return 0;
+      if(typeof x.size === "number") return x.size;
+      if(Array.isArray(x)) return x.length;
+      return 0;
+    }
+    function setHas(x,v){
+      if(!x) return false;
+      if(typeof x.has === "function") return x.has(v);
+      if(Array.isArray(x)) return x.includes(v);
+      return false;
+    }
+    function setEquals(x, arr){
+      if(setSize(x) !== arr.length) return false;
+      for(const v of arr){
+        if(!setHas(x, v)) return false;
+      }
+      return true;
+    }
+
+    function Code({children}){
+      return <pre className="bg-gray-950 text-gray-100 p-4 rounded-2xl text-sm overflow-auto shadow-inner mono"><code>{children}</code></pre>;
+    }
+    function Card({title, children, footer}){
+      return (
+        <div className="rounded-2xl shadow-lg border border-gray-200 bg-white p-5">
+          <div className="text-xl font-semibold mb-3">{title}</div>
+          <div className="space-y-3">{children}</div>
+          {footer && <div className="pt-4 mt-4 border-t text-sm text-gray-600">{footer}</div>}
+        </div>
+      );
+    }
+    function Pill({ok, text}){
+      const cls = ok == null ? "bg-gray-100 text-gray-800" : ok ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800";
+      return <span className={"inline-flex items-center px-3 py-1 rounded-full text-sm font-medium " + cls}>{text}</span>;
+    }
+    function Loader({text="Loading Python..."}){
+      return (
+        <div className="inline-flex items-center gap-2 text-sm text-gray-600">
+          <svg className="w-4 h-4 spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="3" opacity="0.3"/><path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth="3"/></svg>
+          <span>{text}</span>
+        </div>
+      );
+    }
+
+    function Intro(){
+      return (
+        <Card title="Class 8: Python Sets — uniqueness, operations, and performance">
+          <ul className="list-disc ml-6 space-y-1">
+            <li><span className="mono">set</span> stores unique, unordered items. Literal: <span className="mono">{'{'}1, 2, 3{'}'}</span>. Empty set is <span className="mono">set()</span> (not <span className="mono">{'{'}{'}'}</span> which is an empty dict).</li>
+            <li>Common methods: <span className="mono">add</span>, <span className="mono">remove</span>, <span className="mono">discard</span>, <span className="mono">pop</span>, <span className="mono">clear</span>, <span className="mono">update</span>.</li>
+            <li>Operations: union <span className="mono">|</span>, intersection <span className="mono">&</span>, difference <span className="mono">-</span>, symmetric difference <span className="mono">^</span>.</li>
+            <li>Use sets to de-duplicate and for fast membership tests <span className="mono">in</span>.</li>
+            <li><span className="mono">frozenset</span> is an immutable set (hashable), suitable as a dictionary key.</li>
+          </ul>
+        </Card>
+      );
+    }
+
+    // Generic quiz component
+    function PyQuiz({id, title, prompt, starter="", example, check}){
+      const { pyodide, err } = usePyRunner();
+      const [code, setCode] = useState(starter);
+      const [status, setStatus] = useState({ ok: null, text: "Waiting for input" });
+
+      async function run(){
+        if(!pyodide){ setStatus({ok:null, text:"Python not ready"}); return; }
+        setStatus({ok:null, text:"Running..."});
+        try{
+          const res = await runUser(pyodide, code);
+          const glb = res.glb;
+          const out = res.out;
+          const err = res.err;
+          const codeNorm = res.code;
+          const get = (name) => {
+            const pyv = glb.get(name);
+            if (pyv === undefined || pyv === null) return undefined;
+            return (typeof pyv.toJs === "function") ? pyv.toJs() : pyv;
+          };
+
+          const qpass = await check({glb, out, err, code: codeNorm, get});
+
+          // Snapshot variables
+          let snapshot = {};
+          try {
+            const ks = glb.keys();
+            const names = (typeof ks.toJs === "function") ? ks.toJs() : [];
+            for (const k of names) {
+              const v = glb.get(k);
+              snapshot[k] = (v && typeof v.toJs === "function") ? v.toJs() : v;
+            }
+          } catch (_) {}
+
+          setStatus({
+            ok: qpass,
+            text: qpass ? "Correct" : "Not correct. See hints.",
+            lastOut: out,
+            lastErr: err,
+            lastVars: snapshot
+          });
+
+          glb.destroy && glb.destroy();
+
+        }catch(e){
+          setStatus({ok:false, text:"Python error: " + e.message});
+        }
+      }
+
+      return (
+        <Card title={title}>
+          <p>{prompt}</p>
+          <textarea className="w-full h-28 border rounded-xl p-3 mono" value={code} onChange={e=>setCode(e.target.value)} placeholder={example || "Write Python here..."} />
+          <div className="flex items-center gap-3">
+            <button onClick={run} className="px-4 py-2 rounded-xl bg-blue-600 text-white shadow">Run</button>
+            <Pill ok={status.ok} text={status.text} />
+            {(status.lastOut || status.lastErr) && (
+              <div className="text-xs mono text-gray-700">
+                {status.lastOut ? <div>stdout: {String(status.lastOut)}</div> : null}
+                {status.lastErr ? <div>stderr: {String(status.lastErr)}</div> : null}
+              </div>
+            )}
+            {status.lastVars && Object.keys(status.lastVars).length > 0 && (
+              <pre className="bg-slate-100 text-slate-800 text-xs p-2 rounded mono overflow-auto">
+                {JSON.stringify(status.lastVars, null, 2)}
+              </pre>
+            )}
+            {!pyodide && <Loader />}
+          </div>
+          {example && <Code>{example}</Code>}
+        </Card>
+      );
+    }
+
+    function App(){
+      const [score, setScore] = useState(0);
+      const [done, setDone] = useState({});
+      function onPass(key){
+        if (!done[key]) {
+          setDone(prev => ({...prev, [key]: true}));
+          setScore(s => s + 1);
+        }
+      }
+      const total = 9;
+      const progress = Math.round(Object.keys(done).length/total*100);
+
+      return (
+        <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100">
+          <header className="max-w-5xl mx-auto px-6 py-8">
+            <h1 className="text-3xl font-bold tracking-tight">Python Class 8 · Sets (Hands-on)</h1>
+            <p className="text-gray-600 mt-1">Complete {total} quizzes. Real Python runs in your browser.</p>
+          </header>
+
+          <main className="max-w-5xl mx-auto px-6 pb-20 space-y-6">
+            <div className="rounded-2xl border bg-white p-5 flex items-center gap-4 shadow-sm">
+              <div className="w-28">
+                <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+                  <div className="h-3 bg-blue-600" style={{ width: progress + "%" }} />
+                </div>
+              </div>
+              <div className="text-sm text-gray-700">Progress: {Object.keys(done).length}/{total} · Score: {score}</div>
+              <div className="ml-auto text-sm text-gray-500">Tip: Use the examples as a starting point.</div>
+            </div>
+
+            <Intro />
+
+            <PyQuiz
+              id="q1"
+              title="Q1 · make an empty set"
+              prompt='Create s = set(). Pass if it is empty and your code uses set().'
+              example={`s = set()`}
+              check={({get, code}) => {
+                const s = get("s");
+                const used = /(^|\n)\s*s\s*=\s*set\(\s*\)/.test(code);
+                const ok = isSetLike(s) && setSize(s) === 0 && used;
+                if (ok) onPass("q1");
+                return ok;
+              }}
+            />
+
+            <PyQuiz
+              id="q2"
+              title="Q2 · literal set (non-empty)"
+              prompt='Create evens = {2, 4, 6}. Pass if it contains exactly 2,4,6 and code uses curly braces.'
+              example={`evens = {2, 4, 6}`}
+              check={({get, code}) => {
+                const evens = get("evens");
+                const usedBraces = /\{[^}]*\}/.test(code);
+                const ok = isSetLike(evens) && setEquals(evens, [2,4,6]) && usedBraces;
+                if (ok) onPass("q2");
+                return ok;
+              }}
+            />
+
+            <PyQuiz
+              id="q3"
+              title="Q3 · add and remove"
+              prompt='Start with s = {1,2}. Add 3, then remove 2. Pass if s == {1,3} and code uses .add( and .remove('
+              example={`s = {1,2}\ns.add(3)\ns.remove(2)`}
+              check={({get, code}) => {
+                const s = get("s");
+                const hasAdd = /.add\(/.test(code);
+                const hasRemove = /.remove\(/.test(code);
+                const ok = isSetLike(s) && setEquals(s, [1,3]) && hasAdd && hasRemove;
+                if (ok) onPass("q3");
+                return ok;
+              }}
+            />
+
+            <PyQuiz
+              id="q4"
+              title="Q4 · discard without error"
+              prompt='Start with s = {1}. Call s.discard(2). Pass if s is still {1} and code uses .discard('
+              example={`s = {1}\ns.discard(2)`}
+              check={({get, code}) => {
+                const s = get("s");
+                const hasDiscard = /.discard\(/.test(code);
+                const ok = isSetLike(s) && setEquals(s, [1]) && hasDiscard;
+                if (ok) onPass("q4");
+                return ok;
+              }}
+            />
+
+            <PyQuiz
+              id="q5"
+              title="Q5 · membership and len"
+              prompt='Use animals = {"cat","dog"}. If "fox" not in animals, add it. Pass if "fox" is in animals and len == 3; code must use the keyword in.'
+              example={`animals = {"cat","dog"}\nif "fox" not in animals:\n    animals.add("fox")`}
+              check={({get, code}) => {
+                const animals = get("animals");
+                const usedIn = /\bin\b/.test(code);
+                const ok = isSetLike(animals) && setHas(animals, "fox") && setSize(animals) === 3 && usedIn;
+                if (ok) onPass("q5");
+                return ok;
+              }}
+            />
+
+            <PyQuiz
+              id="q6"
+              title="Q6 · intersection"
+              prompt='With a = {1,2,3} and b = {3,4}, make i = a & b (or a.intersection(b)). Pass if i == {3} and code uses & or .intersection('
+              example={`a = {1,2,3}\nb = {3,4}\ni = a & b`}
+              check={({get, code}) => {
+                const i = get("i");
+                const usedOp = /a\s*&\s*b/.test(code) || /\.intersection\(/.test(code);
+                const ok = isSetLike(i) && setEquals(i, [3]) && usedOp;
+                if (ok) onPass("q6");
+                return ok;
+              }}
+            />
+
+            <PyQuiz
+              id="q7"
+              title="Q7 · de-duplicate a list"
+              prompt='Use nums = [1,1,2,3,3]; make uniq = set(nums). Pass if uniq == {1,2,3} and code uses set('
+              example={`nums = [1,1,2,3,3]\nuniq = set(nums)`}
+              check={({get, code}) => {
+                const uniq = get("uniq");
+                const used = /set\(/.test(code);
+                const ok = isSetLike(uniq) && setEquals(uniq, [1,2,3]) && used;
+                if (ok) onPass("q7");
+                return ok;
+              }}
+            />
+
+            <PyQuiz
+              id="q8"
+              title="Q8 · set comprehension"
+              prompt='Create squares = {n*n for n in range(5)}. Pass if it equals {0,1,4,9,16} and code contains for n in range('
+              example={`squares = {n*n for n in range(5)}`}
+              check={({get, code}) => {
+                const squares = get("squares");
+                const hasFor = /for\s+\w+\s+in\s+range\(/.test(code);
+                const ok = isSetLike(squares) && setEquals(squares, [0,1,4,9,16]) && hasFor;
+                if (ok) onPass("q8");
+                return ok;
+              }}
+            />
+            <PyQuiz
+              id="q9"
+              title="Q9 · frozenset immutability"
+              prompt='Make fs = frozenset({1,2}). Then try calling fs.add(3) inside try/except. If exception happens, set imm = True. Pass if imm == True.'
+              example={`fs = frozenset({1,2})
+imm = False
+try:
+    fs.add(3)
+except:
+    imm = True`}
+              check={({get, code}) => {
+                const imm = get("imm");
+                const usedFrozen = /frozenset\(/.test(code);
+                const usedTry = /\btry\s*:/.test(code);
+                const ok = usedFrozen && usedTry && imm === true;
+                if (ok) onPass("q9");
+                return ok;
+              }}
+            />
+
+<Card title="Recap & Tips" footer="Sets excel at uniqueness and fast membership checks. Use set operations to combine or compare groups. Use frozenset when you need an immutable, hashable collection.">
+              <ul className="list-disc ml-6 space-y-1">
+                <li>Empty set is <span className="mono">set()</span>; <span className="mono">{'{'}{'}'}</span> is an empty dict.</li>
+                <li>Use <span className="mono">discard</span> when you may remove a non-existent item (no error).</li>
+                <li>Use set ops (<span className="mono">| & - ^</span>) instead of manual loops where possible.</li>
+                <li>For deterministic display, convert to a sorted list: <span className="mono">sorted(list(s))</span>.</li>
+              </ul>
+            </Card>
+          </main>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<App />);
+  </script>
+</body>
+</html>

@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Python Class 12 · If / Elif / Else (Hands-on)</title>
+  <!-- Tailwind (CDN) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- React 18 UMD + ReactDOM UMD (development builds) -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <!-- Babel Standalone for in-browser JSX transform -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- Pyodide v0.29: real Python in browser -->
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.29.0/full/pyodide.js"></script>
+  <style>
+    .spin { animation: spin 1s linear infinite; }
+    @keyframes spin { from {transform:rotate(0)} to {transform:rotate(360deg)} }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace; }
+  </style>
+</head>
+<body class="bg-slate-50">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useEffect, useState } = React;
+
+    // --- Boot Pyodide (v0.29) and inject helpers ---
+    const pyodideReadyPromise = (async () => {
+      const p = await loadPyodide({
+        indexURL: "https://cdn.jsdelivr.net/pyodide/v0.29.0/full/"
+      });
+      await p.runPythonAsync([
+        "import sys, io",
+        "def _auto_strip_lines(src):",
+        "    s = src.replace('\\r\\n','\\n').replace('\\r','\\n')",
+        "    lines = s.split('\\n')",
+        "    # keep indentation; only trim the end of each line",
+        "    return '\\n'.join([ln.rstrip() for ln in lines])",
+        "",
+        "def run_user(src):",
+        "    code = _auto_strip_lines(src)",
+        "    glb = {}",
+        "    _out = io.StringIO(); _err = io.StringIO()",
+        "    old_out, old_err = sys.stdout, sys.stderr",
+        "    sys.stdout, sys.stderr = _out, _err",
+        "    try:",
+        "        exec(code, glb, glb)",
+        "    finally:",
+        "        sys.stdout, sys.stderr = old_out, old_err",
+        "    return {'glb': glb, 'out': _out.getvalue(), 'err': _err.getvalue(), 'code': code}",
+      ].join('\n'));
+      return p;
+    })().catch(e => {
+      console.error("Pyodide init failed:", e);
+      alert("Pyodide init failed: " + e.message);
+    });
+
+    function usePyRunner() {
+      const [pyodide, setPyodide] = useState(null);
+      const [err, setErr] = useState(null);
+      useEffect(() => {
+        let mounted = true;
+        pyodideReadyPromise.then(p => mounted && setPyodide(p)).catch(e => setErr(e));
+        return () => { mounted = false; };
+      }, []);
+      return { pyodide, err };
+    }
+
+    // Keep glb as PyProxy; convert strings safely
+    async function runUser(pyodide, code) {
+      const run_user = pyodide.globals.get("run_user");
+      const res = run_user(code); // dict PyProxy
+      const getJs = (obj, key) => {
+        const v = obj.get(key);
+        return (v && typeof v.toJs === "function") ? v.toJs() : v;
+      };
+      const glb = res.get("glb");                 // PyProxy(dict)
+      const out = getJs(res, "out");              // string
+      const err = getJs(res, "err");              // string
+      const codeNorm = getJs(res, "code");        // string
+      res.destroy && res.destroy();
+      return { glb, out, err, code: codeNorm };
+    }
+
+    function Code({children}){
+      return <pre className="bg-gray-950 text-gray-100 p-4 rounded-2xl text-sm overflow-auto shadow-inner mono"><code>{children}</code></pre>;
+    }
+    function Card({title, children, footer}){
+      return (
+        <div className="rounded-2xl shadow-lg border border-gray-200 bg-white p-5">
+          <div className="text-xl font-semibold mb-3">{title}</div>
+          <div className="space-y-3">{children}</div>
+          {footer && <div className="pt-4 mt-4 border-t text-sm text-gray-600">{footer}</div>}
+        </div>
+      );
+    }
+    function Pill({ok, text}){
+      const cls = ok == null ? "bg-gray-100 text-gray-800" : ok ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800";
+      return <span className={"inline-flex items-center px-3 py-1 rounded-full text-sm font-medium " + cls}>{text}</span>;
+    }
+    function Loader({text="Loading Python..."}){
+      return (
+        <div className="inline-flex items-center gap-2 text-sm text-gray-600">
+          <svg className="w-4 h-4 spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="3" opacity="0.3"/><path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth="3"/></svg>
+          <span>{text}</span>
+        </div>
+      );
+    }
+
+    function Intro(){
+      return (
+        <Card title="Class 12: If / Elif / Else — control the flow of your program">
+          <ul className="list-disc ml-6 space-y-1">
+            <li>Basic shape: <span className="mono">if condition: ... elif other: ... else: ...</span></li>
+            <li>Blocks are defined by indentation (4 spaces recommended).</li>
+            <li>Conditions use truthiness: empty collections are False; non-empty are True.</li>
+            <li>Combine conditions with <span className="mono">and</span>, <span className="mono">or</span>, and <span className="mono">not</span>.</li>
+            <li>Inline conditional expression: <span className="mono">x if cond else y</span>.</li>
+          </ul>
+        </Card>
+      );
+    }
+
+    // Generic quiz component
+    function PyQuiz({id, title, prompt, starter="", example, check}){
+      const { pyodide, err } = usePyRunner();
+      const [code, setCode] = useState(starter);
+      const [status, setStatus] = useState({ ok: null, text: "Waiting for input" });
+
+      async function run(){
+        if(!pyodide){ setStatus({ok:null, text:"Python not ready"}); return; }
+        setStatus({ok:null, text:"Running..."});
+        try{
+          const res = await runUser(pyodide, code);
+          const glb = res.glb;
+          const out = res.out;
+          const err = res.err;
+          const codeNorm = res.code;
+          const get = (name) => {
+            const pyv = glb.get(name);
+            if (pyv === undefined || pyv === null) return undefined;
+            return (typeof pyv.toJs === "function") ? pyv.toJs() : pyv;
+          };
+
+          const qpass = await check({glb, out, err, code: codeNorm, get});
+
+          // Snapshot variables
+          let snapshot = {};
+          try {
+            const ks = glb.keys();
+            const names = (typeof ks.toJs === "function") ? ks.toJs() : [];
+            for (const k of names) {
+              const v = glb.get(k);
+              snapshot[k] = (v && typeof v.toJs === "function") ? v.toJs() : v;
+            }
+          } catch (_) {}
+
+          setStatus({
+            ok: qpass,
+            text: qpass ? "Correct" : "Not correct. See hints.",
+            lastOut: out,
+            lastErr: err,
+            lastVars: snapshot
+          });
+
+          glb.destroy && glb.destroy();
+
+        }catch(e){
+          setStatus({ok:false, text:"Python error: " + e.message});
+        }
+      }
+
+      return (
+        <Card title={title}>
+          <p>{prompt}</p>
+          <textarea className="w-full h-96 border rounded-xl p-3 mono" value={code} onChange={e=>setCode(e.target.value)} placeholder={example || "Write Python here..."} />
+          <div className="flex items-center gap-3">
+            <button onClick={run} className="px-4 py-2 rounded-xl bg-blue-600 text-white shadow">Run</button>
+            <Pill ok={status.ok} text={status.text} />
+            {(status.lastOut || status.lastErr) && (
+              <div className="text-xs mono text-gray-700">
+                {status.lastOut ? <div>stdout: {String(status.lastOut)}</div> : null}
+                {status.lastErr ? <div>stderr: {String(status.lastErr)}</div> : null}
+              </div>
+            )}
+            {status.lastVars && Object.keys(status.lastVars).length > 0 && (
+              <pre className="bg-slate-100 text-slate-800 text-xs p-2 rounded mono overflow-auto">
+                {JSON.stringify(status.lastVars, null, 2)}
+              </pre>
+            )}
+            {!pyodide && <Loader />}
+          </div>
+          {example && <Code>{example}</Code>}
+        </Card>
+      );
+    }
+
+    function App(){
+      const [score, setScore] = useState(0);
+      const [done, setDone] = useState({});
+      function onPass(key){
+        if (!done[key]) {
+          setDone(prev => ({...prev, [key]: true}));
+          setScore(s => s + 1);
+        }
+      }
+      const total = 9;
+      const progress = Math.round(Object.keys(done).length/total*100);
+
+      return (
+        <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100">
+          <header className="max-w-5xl mx-auto px-6 py-8">
+            <h1 className="text-3xl font-bold tracking-tight">Python Class 12 · If / Elif / Else (Hands-on)</h1>
+            <p className="text-gray-600 mt-1">Complete {total} quizzes. Real Python runs in your browser.</p>
+          </header>
+
+          <main className="max-w-5xl mx-auto px-6 pb-20 space-y-6">
+            <div className="rounded-2xl border bg-white p-5 flex items-center gap-4 shadow-sm">
+              <div className="w-28">
+                <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+                  <div className="h-3 bg-blue-600" style={{ width: progress + "%" }} />
+                </div>
+              </div>
+              <div className="text-sm text-gray-700">Progress: {Object.keys(done).length}/{total} · Score: {score}</div>
+              <div className="ml-auto text-sm text-gray-500">Tip: Use the examples as a starting point.</div>
+            </div>
+
+            <Intro />
+
+            <PyQuiz
+              id="q1"
+              title="Q1 · basic if"
+              prompt='Set ok = False. If 2 < 5: set ok = True. Pass if ok is True; code must contain "if 2 < 5:".'
+              example={`ok = False\nif 2 < 5:\n    ok = True`}
+              check={({get, code}) => {
+                const ok = get("ok");
+                const used = /if\s+2\s*<\s*5\s*:/.test(code);
+                const pass = used && ok === true;
+                if (pass) onPass("q1");
+                return pass;
+              }}
+            />
+
+            <PyQuiz
+              id="q2"
+              title="Q2 · if/else"
+              prompt='Let n = 3. If n >= 0: sign = "nonnegative" else: sign = "negative". Pass if sign == "nonnegative" and code uses else:'
+              example={`n = 3\nif n >= 0:\n    sign = "nonnegative"\nelse:\n    sign = "negative"`}
+              check={({get, code}) => {
+                const sign = get("sign");
+                const hasElse = /\belse\s*:/.test(code);
+                const pass = sign === "nonnegative" && hasElse;
+                if (pass) onPass("q2");
+                return pass;
+              }}
+            />
+
+            <PyQuiz
+              id="q3"
+              title="Q3 · elif chain (grading)"
+              prompt='Let score = 85. Use if/elif/else to set grade: A for >=90, B for >=80, C for >=70, else F. Pass if grade == "B" and code uses elif.'
+              example={`score = 85\nif score >= 90:\n    grade = "A"\nelif score >= 80:\n    grade = "B"\nelif score >= 70:\n    grade = "C"\nelse:\n    grade = "F"`}
+              check={({get, code}) => {
+                const grade = get("grade");
+                const hasElif = /\belif\b/.test(code);
+                const pass = grade === "B" && hasElif;
+                if (pass) onPass("q3");
+                return pass;
+              }}
+            />
+
+            <PyQuiz
+              id="q4"
+              title="Q4 · truthiness (empty vs non-empty)"
+              prompt='Let xs = []. If xs: label = "nonempty" else: label = "empty". Pass if label == "empty" and code tests the variable directly (uses "if xs").'
+              example={`xs = []\nif xs:\n    label = "nonempty"\nelse:\n    label = "empty"`}
+              check={({get, code}) => {
+                const label = get("label");
+                const direct = /if\s+xs\s*:/.test(code);
+                const pass = label === "empty" && direct;
+                if (pass) onPass("q4");
+                return pass;
+              }}
+            />
+
+            <PyQuiz
+              id="q5"
+              title="Q5 · combine conditions (and/or/not)"
+              prompt='Let age = 20; has_id = True. If age >= 18 and has_id: result = "ok" else: result = "deny". Pass if result == "ok".'
+              example={`age = 20\nhas_id = True\nif age >= 18 and has_id:\n    result = "ok"\nelse:\n    result = "deny"`}
+              check={({get, code}) => {
+                const result = get("result");
+                const usedAnd = /\band\b/.test(code);
+                const pass = usedAnd && result === "ok";
+                if (pass) onPass("q5");
+                return pass;
+              }}
+            />
+
+            <PyQuiz
+              id="q6"
+              title="Q6 · nested if (leap year)"
+              prompt='Let y = 2000. Set leap = True for leap years (divisible by 400, or divisible by 4 and not by 100) else False. Use nested ifs. Pass if leap is True.'
+              example={`y = 2000\nleap = False\nif y % 4 == 0:\n    if y % 100 == 0:\n        if y % 400 == 0:\n            leap = True\n        else:\n            leap = False\n    else:\n        leap = True\nelse:\n    leap = False`}
+              check={({get, code}) => {
+                const leap = get("leap");
+                const hasIfs = (code.match(/\bif\b/g)||[]).length >= 2;
+                const pass = leap === true && hasIfs;
+                if (pass) onPass("q6");
+                return pass;
+              }}
+            />
+
+            <PyQuiz
+              id="q7"
+              title="Q7 · conditional expression (ternary)"
+              prompt='Let n = 7. Make label = "even" if n%2==0 else "odd". Pass if label == "odd"; code must use the inline if-expression.'
+              example={`n = 7\nlabel = "even" if n%2==0 else "odd"`}
+              check={({get, code}) => {
+                const label = get("label");
+                const usedInline = /\bif\b.*\belse\b/.test(code);
+                const pass = usedInline && label === "odd";
+                if (pass) onPass("q7");
+                return pass;
+              }}
+            />
+
+            <PyQuiz
+              id="q8"
+              title="Q8 · guard against division by zero"
+              prompt='Write these 3 lines first: a = 10, b = 0, result = None. Then use if/else. If b == 0 keep result = None, else set result = a/b.'
+              example={`a = 10\nb = 0\nresult = None\nif b == 0:\n    result = None\nelse:\n    result = a/b`}
+              check={({code, err}) => {
+                // Do not depend on runtime globals; validate structure instead.
+                const hasInit =
+                  /(^|\n)\s*a\s*=\s*10(\s|$)/.test(code) &&
+                  /(^|\n)\s*b\s*=\s*0(\s|$)/.test(code) &&
+                  /(^|\n)\s*result\s*=\s*None(\s|$)/.test(code);
+                const hasIfElse = /\bif\b/.test(code) && /\belse\b/.test(code);
+                const hasDivide = /a\s*\/\s*b/.test(code);
+                const noRuntimeError = !err; // if user wrote bad code, there will be stderr
+
+                const pass = hasInit && hasIfElse && hasDivide && noRuntimeError;
+                if (pass) onPass("q8");
+                return pass;
+              }}
+            />
+
+            <PyQuiz
+              id="q9"
+              title="Q9 · max of three via if/else"
+              prompt='Let a=3, b=9, c=5. Use only if/elif/else to compute m = the maximum of a,b,c. Pass if m == 9 and you used at least two if/elif.'
+              example={`a=3; b=9; c=5\nif a >= b and a >= c:\n    m = a\nelif b >= a and b >= c:\n    m = b\nelse:\n    m = c`}
+              check={({get, code}) => {
+                const m = get("m");
+                const cnt = (code.match(/\bif\b/g)||[]).length + (code.match(/\belif\b/g)||[]).length;
+                const pass = m === 9 && cnt >= 2;
+                if (pass) onPass("q9");
+                return pass;
+              }}
+            />
+
+            <Card title="Recap & Tips" footer="Write the simplest condition that expresses your intent. Prefer elif-chains over deeply nested ifs when cases are exclusive, and use a guard clause (early return) in functions to keep code flat.">
+              <ul className="list-disc ml-6 space-y-1">
+                <li>Truthiness: empty == False, non-empty == True.</li>
+                <li>Use <span className="mono">elif</span> to avoid redundant checks.</li>
+                <li>Inline conditional expressions are great for simple assignments.</li>
+              </ul>
+            </Card>
+          </main>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<App />);
+  </script>
+</body>
+</html>

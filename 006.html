@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Python Class 6 · Lists (Hands-on)</title>
+  <!-- Tailwind (CDN) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- React 18 UMD + ReactDOM UMD (development builds) -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <!-- Babel Standalone for in-browser JSX transform -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- Pyodide v0.29: real Python in browser -->
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.29.0/full/pyodide.js"></script>
+  <style>
+    .spin { animation: spin 1s linear infinite; }
+    @keyframes spin { from {transform:rotate(0)} to {transform:rotate(360deg)} }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace; }
+  </style>
+</head>
+<body class="bg-slate-50">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useEffect, useState } = React;
+
+    // --- Boot Pyodide (v0.29) and inject helpers ---
+    const pyodideReadyPromise = (async () => {
+      const p = await loadPyodide({
+        indexURL: "https://cdn.jsdelivr.net/pyodide/v0.29.0/full/"
+      });
+      await p.runPythonAsync([
+        "import sys, io",
+        "def _auto_strip_lines(src):",
+        "    s = src.replace('\\r\\n','\\n').replace('\\r','\\n')",
+        "    lines = s.split('\\n')",
+        "    # keep indentation; only trim the end of each line",
+        "    return '\\n'.join([ln.rstrip() for ln in lines])",
+        "",
+        "def run_user(src):",
+        "    code = _auto_strip_lines(src)",
+        "    glb = {}",
+        "    _out = io.StringIO(); _err = io.StringIO()",
+        "    old_out, old_err = sys.stdout, sys.stderr",
+        "    sys.stdout, sys.stderr = _out, _err",
+        "    try:",
+        "        exec(code, glb, glb)",
+        "    finally:",
+        "        sys.stdout, sys.stderr = old_out, old_err",
+        "    return {'glb': glb, 'out': _out.getvalue(), 'err': _err.getvalue(), 'code': code}",
+      ].join('\n'));
+      return p;
+    })().catch(e => {
+      console.error("Pyodide init failed:", e);
+      alert("Pyodide init failed: " + e.message);
+    });
+
+    function usePyRunner() {
+      const [pyodide, setPyodide] = useState(null);
+      const [err, setErr] = useState(null);
+      useEffect(() => {
+        let mounted = true;
+        pyodideReadyPromise.then(p => mounted && setPyodide(p)).catch(e => setErr(e));
+        return () => { mounted = false; };
+      }, []);
+      return { pyodide, err };
+    }
+
+    // Keep glb as PyProxy; convert strings safely
+    async function runUser(pyodide, code) {
+      const run_user = pyodide.globals.get("run_user");
+      const res = run_user(code); // dict PyProxy
+      const getJs = (obj, key) => {
+        const v = obj.get(key);
+        return (v && typeof v.toJs === "function") ? v.toJs() : v;
+      };
+      const glb = res.get("glb");                 // PyProxy(dict)
+      const out = getJs(res, "out");              // string
+      const err = getJs(res, "err");              // string
+      const codeNorm = getJs(res, "code");        // string
+      res.destroy && res.destroy();
+      return { glb, out, err, code: codeNorm };
+    }
+
+    function Code({children}){
+      return <pre className="bg-gray-950 text-gray-100 p-4 rounded-2xl text-sm overflow-auto shadow-inner mono"><code>{children}</code></pre>;
+    }
+    function Card({title, children, footer}){
+      return (
+        <div className="rounded-2xl shadow-lg border border-gray-200 bg-white p-5">
+          <div className="text-xl font-semibold mb-3">{title}</div>
+          <div className="space-y-3">{children}</div>
+          {footer && <div className="pt-4 mt-4 border-t text-sm text-gray-600">{footer}</div>}
+        </div>
+      );
+    }
+    function Pill({ok, text}){
+      const cls = ok == null ? "bg-gray-100 text-gray-800" : ok ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800";
+      return <span className={"inline-flex items-center px-3 py-1 rounded-full text-sm font-medium " + cls}>{text}</span>;
+    }
+    function Loader({text="Loading Python..."}){
+      return (
+        <div className="inline-flex items-center gap-2 text-sm text-gray-600">
+          <svg className="w-4 h-4 spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="3" opacity="0.3"/><path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth="3"/></svg>
+          <span>{text}</span>
+        </div>
+      );
+    }
+
+    function Intro(){
+      return (
+        <Card title="Class 6: Python Lists — creation, indexing, slicing, and mutation">
+          <ul className="list-disc ml-6 space-y-1">
+            <li><span className="mono">list</span> is an ordered, mutable sequence. Write literals with square brackets: <span className="mono">[1, 2, 3]</span>.</li>
+            <li>Indexing starts at 0. Negative indices count from the end: <span className="mono">a[-1]</span> is the last element.</li>
+            <li>Slicing returns a new list: <span className="mono">a[start:stop]</span> (stop is exclusive).</li>
+            <li>Common methods: <span className="mono">append</span>, <span className="mono">insert</span>, <span className="mono">pop</span>, <span className="mono">remove</span>, <span className="mono">index</span>, <span className="mono">count</span>, <span className="mono">sort</span>, <span className="mono">reverse</span>.</li>
+            <li>Copy vs alias: <span className="mono">b = a</span> points to the same list; use <span className="mono">a[:]</span>, <span className="mono">list(a)</span>, or <span className="mono">a.copy()</span> to get a shallow copy.</li>
+          </ul>
+        </Card>
+      );
+    }
+
+    // Generic quiz component
+    function PyQuiz({id, title, prompt, starter="", example, check}){
+      const { pyodide, err } = usePyRunner();
+      const [code, setCode] = useState(starter);
+      const [status, setStatus] = useState({ ok: null, text: "Waiting for input" });
+
+      async function run(){
+        if(!pyodide){ setStatus({ok:null, text:"Python not ready"}); return; }
+        setStatus({ok:null, text:"Running..."});
+        try{
+          const res = await runUser(pyodide, code);
+          const glb = res.glb;
+          const out = res.out;
+          const err = res.err;
+          const codeNorm = res.code;
+          const get = (name) => {
+            const pyv = glb.get(name);
+            if (pyv === undefined || pyv === null) return undefined;
+            return (typeof pyv.toJs === "function") ? pyv.toJs() : pyv;
+          };
+
+          const qpass = await check({glb, out, err, code: codeNorm, get});
+
+          // Snapshot variables
+          let snapshot = {};
+          try {
+            const ks = glb.keys();
+            const names = (typeof ks.toJs === "function") ? ks.toJs() : [];
+            for (const k of names) {
+              const v = glb.get(k);
+              snapshot[k] = (v && typeof v.toJs === "function") ? v.toJs() : v;
+            }
+          } catch (_) {}
+
+          setStatus({
+            ok: qpass,
+            text: qpass ? "Correct" : "Not correct. See hints.",
+            lastOut: out,
+            lastErr: err,
+            lastVars: snapshot
+          });
+
+          glb.destroy && glb.destroy();
+
+        }catch(e){
+          setStatus({ok:false, text:"Python error: " + e.message});
+        }
+      }
+
+      return (
+        <Card title={title}>
+          <p>{prompt}</p>
+          <textarea className="w-full h-28 border rounded-xl p-3 mono" value={code} onChange={e=>setCode(e.target.value)} placeholder={example || "Write Python here..."} />
+          <div className="flex items-center gap-3">
+            <button onClick={run} className="px-4 py-2 rounded-xl bg-blue-600 text-white shadow">Run</button>
+            <Pill ok={status.ok} text={status.text} />
+            {(status.lastOut || status.lastErr) && (
+              <div className="text-xs mono text-gray-700">
+                {status.lastOut ? <div>stdout: {String(status.lastOut)}</div> : null}
+                {status.lastErr ? <div>stderr: {String(status.lastErr)}</div> : null}
+              </div>
+            )}
+            {status.lastVars && Object.keys(status.lastVars).length > 0 && (
+              <pre className="bg-slate-100 text-slate-800 text-xs p-2 rounded mono overflow-auto">
+                {JSON.stringify(status.lastVars, null, 2)}
+              </pre>
+            )}
+            {!pyodide && <Loader />}
+          </div>
+          {example && <Code>{example}</Code>}
+        </Card>
+      );
+    }
+
+    function App(){
+      const [score, setScore] = useState(0);
+      const [done, setDone] = useState({});
+      function onPass(key){
+        if (!done[key]) {
+          setDone(prev => ({...prev, [key]: true}));
+          setScore(s => s + 1);
+        }
+      }
+      const total = 9;
+      const progress = Math.round(Object.keys(done).length/total*100);
+
+      return (
+        <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100">
+          <header className="max-w-5xl mx-auto px-6 py-8">
+            <h1 className="text-3xl font-bold tracking-tight">Python Class 6 · Lists (Hands-on)</h1>
+            <p className="text-gray-600 mt-1">Complete {total} quizzes. Real Python runs in your browser.</p>
+          </header>
+
+          <main className="max-w-5xl mx-auto px-6 pb-20 space-y-6">
+            <div className="rounded-2xl border bg-white p-5 flex items-center gap-4 shadow-sm">
+              <div className="w-28">
+                <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+                  <div className="h-3 bg-blue-600" style={{ width: progress + "%" }} />
+                </div>
+              </div>
+              <div className="text-sm text-gray-700">Progress: {Object.keys(done).length}/{total} · Score: {score}</div>
+              <div className="ml-auto text-sm text-gray-500">Tip: Use the examples as a starting point.</div>
+            </div>
+
+            <Intro />
+
+            <PyQuiz
+              id="q1"
+              title="Q1 · make an empty list"
+              prompt='Create nums = []. Pass if nums is a list and len(nums) == 0 and your code uses the literal [].'
+              example={`nums = []`}
+              check={({get, code}) => {
+                const nums = get("nums");
+                const usedLiteral = /(^|\n)\s*nums\s*=\s*\[\]/.test(code);
+                const ok = Array.isArray(nums) && nums.length === 0 && usedLiteral;
+                if (ok) onPass("q1");
+                return ok;
+              }}
+            />
+
+            <PyQuiz
+              id="q2"
+              title="Q2 · append"
+              prompt='Start with lst = [1, 2]. Append 3. Pass if lst == [1, 2, 3] and code uses .append('
+              example={`lst = [1, 2]\nlst.append(3)`}
+              check={({get, code}) => {
+                const lst = get("lst");
+                const used = /\.append\(/.test(code);
+                const ok = Array.isArray(lst) && lst.length === 3 && lst[2] === 3 && used;
+                if (ok) onPass("q2");
+                return ok;
+              }}
+            />
+
+            <PyQuiz
+              id="q3"
+              title="Q3 · indexing and negative index"
+              prompt='Use a = [10, 20, 30]; create second = a[1] and last = a[-1]. Pass if second == 20 and last == 30, and code contains [1] and [-1].'
+              example={`a = [10, 20, 30]\nsecond = a[1]\nlast = a[-1]`}
+              check={({get, code}) => {
+                const second = get("second");
+                const last = get("last");
+                const has1 = /\[1\]/.test(code);
+                const hasNeg1 = /\[-1\]/.test(code);
+                const ok = (second === 20) && (last === 30) && has1 && hasNeg1;
+                if (ok) onPass("q3");
+                return ok;
+              }}
+            />
+
+            <PyQuiz
+              id="q4"
+              title="Q4 · slicing"
+              prompt='Use b = [0,1,2,3,4]; create mid = b[1:4]. Pass if mid == [1,2,3] and your slice uses a colon.'
+              example={`b = [0,1,2,3,4]\nmid = b[1:4]`}
+              check={({get, code}) => {
+                const mid = get("mid");
+                const hasColon = /:\s*\d?/.test(code) || /\[\d+\s*:\s*\d+\]/.test(code);
+                const ok = Array.isArray(mid) && mid.length === 3 && mid[0] === 1 && mid[2] === 3 && hasColon;
+                if (ok) onPass("q4");
+                return ok;
+              }}
+            />
+
+            <PyQuiz
+              id="q5"
+              title="Q5 · insert at a position"
+              prompt='Start with c = ["a", "c"]. Insert "b" at index 1. Pass if c == ["a","b","c"] and code uses .insert('
+              example={`c = ["a", "c"]\nc.insert(1, "b")`}
+              check={({get, code}) => {
+                const c = get("c");
+                const used = /\.insert\(/.test(code);
+                const ok = Array.isArray(c) && c.join(",") === "a,b,c" && used;
+                if (ok) onPass("q5");
+                return ok;
+              }}
+            />
+
+            <PyQuiz
+              id="q6"
+              title="Q6 · pop and remove"
+              prompt='Start with d = [1,2,3,2]; do pop_last = d.pop(); then d.remove(2). Pass if pop_last == 2, d == [1,3], and code uses both pop( and remove('
+              example={`d = [1,2,3,2]\npop_last = d.pop()\nd.remove(2)`}
+              check={({get, code}) => {
+                const d = get("d");
+                const pop_last = get("pop_last");
+                const hasPop = /\.pop\(/.test(code);
+                const hasRemove = /\.remove\(/.test(code);
+                const ok = pop_last === 2 && Array.isArray(d) && d.length === 2 && d[0] === 1 && d[1] === 3 && hasPop && hasRemove;
+                if (ok) onPass("q6");
+                return ok;
+              }}
+            />
+
+            <PyQuiz
+              id="q7"
+              title="Q7 · membership and len"
+              prompt='Use pets = ["cat","dog"]. If "fox" is not in pets, append it. Pass if "fox" is in pets and len(pets) == 3; code must use the keyword in.'
+              example={`pets = ["cat","dog"]\nif "fox" not in pets:\n    pets.append("fox")`}
+              check={({get, code}) => {
+                const pets = get("pets");
+                const usedIn = /\bin\b/.test(code);
+                const ok = Array.isArray(pets) && pets.includes("fox") && pets.length === 3 && usedIn;
+                if (ok) onPass("q7");
+                return ok;
+              }}
+            />
+
+            <PyQuiz
+              id="q8"
+              title="Q8 · list comprehension"
+              prompt='Create squares = [n*n for n in range(5)]. Pass if squares == [0,1,4,9,16] and code contains for n in range('
+              example={`squares = [n*n for n in range(5)]`}
+              check={({get, code}) => {
+                const squares = get("squares");
+                const hasFor = /for\s+\w+\s+in\s+range\(/.test(code);
+                const ok = Array.isArray(squares) && squares.length === 5 && squares[4] === 16 && hasFor;
+                if (ok) onPass("q8");
+                return ok;
+              }}
+            />
+
+            <PyQuiz
+              id="q9"
+              title="Q9 · copy vs alias"
+              prompt='Start with a = [1,2]. Create a real copy b (using a[:], list(a), or a.copy()). Then do a.append(3). Pass if a == [1,2,3] and b == [1,2].'
+              example={`a = [1,2]\n# choose ONE:\n# b = a[:]\n# b = list(a)\n# b = a.copy()\na.append(3)`}
+              check={({get, code}) => {
+                const a = get("a");
+                const b = get("b");
+                const usedSlice = /\[:\]/.test(code);
+                const usedList = /\blist\(a\)/.test(code);
+                const usedCopy = /\.copy\(\)/.test(code);
+                const ok = Array.isArray(a) && Array.isArray(b) && a.length === 3 && b.length === 2 && (usedSlice || usedList || usedCopy);
+                if (ok) onPass("q9");
+                return ok;
+              }}
+            />
+
+            <Card title="Recap & Tips" footer="Lists are mutable and ordered. Prefer clear, readable operations. Practice small transformations, then combine them.">
+              <ul className="list-disc ml-6 space-y-1">
+                <li>Mutate in place with <span className="mono">append</span>, <span className="mono">insert</span>, <span className="mono">pop</span>, <span className="mono">remove</span>.</li>
+                <li>Use slicing to copy or to take sublists.</li>
+                <li>List comprehensions are concise for mapping and filtering.</li>
+                <li>Remember: aliasing shares the same object; copying makes a new one.</li>
+              </ul>
+            </Card>
+          </main>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<App />);
+  </script>
+</body>
+</html>

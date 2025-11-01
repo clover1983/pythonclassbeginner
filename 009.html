@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Python Class 9 · Dictionaries / Hash Tables (Hands-on)</title>
+  <!-- Tailwind (CDN) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- React 18 UMD + ReactDOM UMD (development builds) -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <!-- Babel Standalone for in-browser JSX transform -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- Pyodide v0.29: real Python in browser -->
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.29.0/full/pyodide.js"></script>
+  <style>
+    .spin { animation: spin 1s linear infinite; }
+    @keyframes spin { from {transform:rotate(0)} to {transform:rotate(360deg)} }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace; }
+  </style>
+</head>
+<body class="bg-slate-50">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useEffect, useState } = React;
+
+    // --- Boot Pyodide (v0.29) and inject helpers ---
+    const pyodideReadyPromise = (async () => {
+      const p = await loadPyodide({
+        indexURL: "https://cdn.jsdelivr.net/pyodide/v0.29.0/full/"
+      });
+      await p.runPythonAsync([
+        "import sys, io",
+        "def _auto_strip_lines(src):",
+        "    s = src.replace('\\r\\n','\\n').replace('\\r','\\n')",
+        "    lines = s.split('\\n')",
+        "    # keep indentation; only trim the end of each line",
+        "    return '\\n'.join([ln.rstrip() for ln in lines])",
+        "",
+        "def run_user(src):",
+        "    code = _auto_strip_lines(src)",
+        "    glb = {}",
+        "    _out = io.StringIO(); _err = io.StringIO()",
+        "    old_out, old_err = sys.stdout, sys.stderr",
+        "    sys.stdout, sys.stderr = _out, _err",
+        "    try:",
+        "        exec(code, glb, glb)",
+        "    finally:",
+        "        sys.stdout, sys.stderr = old_out, old_err",
+        "    return {'glb': glb, 'out': _out.getvalue(), 'err': _err.getvalue(), 'code': code}",
+      ].join('\n'));
+      return p;
+    })().catch(e => {
+      console.error("Pyodide init failed:", e);
+      alert("Pyodide init failed: " + e.message);
+    });
+
+    function usePyRunner() {
+      const [pyodide, setPyodide] = useState(null);
+      const [err, setErr] = useState(null);
+      useEffect(() => {
+        let mounted = true;
+        pyodideReadyPromise.then(p => mounted && setPyodide(p)).catch(e => setErr(e));
+        return () => { mounted = false; };
+      }, []);
+      return { pyodide, err };
+    }
+
+    // Keep glb as PyProxy; convert strings safely
+    async function runUser(pyodide, code) {
+      const run_user = pyodide.globals.get("run_user");
+      const res = run_user(code); // dict PyProxy
+      const getJs = (obj, key) => {
+        const v = obj.get(key);
+        return (v && typeof v.toJs === "function") ? v.toJs() : v;
+      };
+      const glb = res.get("glb");                 // PyProxy(dict)
+      const out = getJs(res, "out");              // string
+      const err = getJs(res, "err");              // string
+      const codeNorm = getJs(res, "code");        // string
+      res.destroy && res.destroy();
+      return { glb, out, err, code: codeNorm };
+    }
+
+    // --- Dict helpers (Pyodide may convert dict -> JS Map) ---
+    function isMap(x){ return x && typeof x.get === "function" && typeof x.has === "function" && typeof x.size === "number"; }
+    function isPlainObj(x){ return x && typeof x === "object" && !Array.isArray(x) && !isMap(x); }
+    function dictSize(d){
+      if (!d) return 0;
+      if (isMap(d)) return d.size;
+      if (isPlainObj(d)) return Object.keys(d).length;
+      return 0;
+    }
+    function dictHas(d, key){
+      if (!d) return false;
+      if (isMap(d)) return d.has(key);
+      if (isPlainObj(d)) return Object.prototype.hasOwnProperty.call(d, key);
+      return false;
+    }
+    function dictGet(d, key){
+      if (!d) return undefined;
+      if (isMap(d)) return d.get(key);
+      if (isPlainObj(d)) return d[key];
+      return undefined;
+    }
+    function entriesEqual(d, arrPairs){
+      if (dictSize(d) !== arrPairs.length) return false;
+      for (const [k,v] of arrPairs){
+        if (!dictHas(d, k)) return false;
+        const got = dictGet(d, k);
+        if (Array.isArray(v)){
+          // deep compare arrays (for values that are arrays/tuples converted)
+          if (!Array.isArray(got) || got.length !== v.length) return false;
+          for (let i=0;i<v.length;i++){ if(got[i]!==v[i]) return false; }
+        } else {
+          if (got !== v) return false;
+        }
+      }
+      return true;
+    }
+
+    function Code({children}){
+      return <pre className="bg-gray-950 text-gray-100 p-4 rounded-2xl text-sm overflow-auto shadow-inner mono"><code>{children}</code></pre>;
+    }
+    function Card({title, children, footer}){
+      return (
+        <div className="rounded-2xl shadow-lg border border-gray-200 bg-white p-5">
+          <div className="text-xl font-semibold mb-3">{title}</div>
+          <div className="space-y-3">{children}</div>
+          {footer && <div className="pt-4 mt-4 border-t text-sm text-gray-600">{footer}</div>}
+        </div>
+      );
+    }
+    function Pill({ok, text}){
+      const cls = ok == null ? "bg-gray-100 text-gray-800" : ok ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800";
+      return <span className={"inline-flex items-center px-3 py-1 rounded-full text-sm font-medium " + cls}>{text}</span>;
+    }
+    function Loader({text="Loading Python..."}){
+      return (
+        <div className="inline-flex items-center gap-2 text-sm text-gray-600">
+          <svg className="w-4 h-4 spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="3" opacity="0.3"/><path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth="3"/></svg>
+          <span>{text}</span>
+        </div>
+      );
+    }
+
+    function Intro(){
+      return (
+        <Card title="Class 9: Python Dictionaries (Hash Tables) — keys, values, and common patterns">
+          <ul className="list-disc ml-6 space-y-1">
+            <li><span className="mono">dict</span> maps keys to values with O(1) average lookup.</li>
+            <li>Literal forms: <span className="mono">{'{'}"a": 1, "b": 2{'}'}</span>, or by constructor <span className="mono">dict(a=1, b=2)</span>.</li>
+            <li>Keys must be hashable (e.g., numbers, strings, tuples). Lists and sets cannot be keys.</li>
+            <li>Common methods: <span className="mono">get</span>, <span className="mono">pop</span>, <span className="mono">update</span>, <span className="mono">keys</span>, <span className="mono">values</span>, <span className="mono">items</span>, <span className="mono">clear</span>, <span className="mono">copy</span>.</li>
+            <li>Membership test <span className="mono">in</span> checks keys by default.</li>
+          </ul>
+        </Card>
+      );
+    }
+
+    // Generic quiz component
+    function PyQuiz({id, title, prompt, starter="", example, check}){
+      const { pyodide, err } = usePyRunner();
+      const [code, setCode] = useState(starter);
+      const [status, setStatus] = useState({ ok: null, text: "Waiting for input" });
+
+      async function run(){
+        if(!pyodide){ setStatus({ok:null, text:"Python not ready"}); return; }
+        setStatus({ok:null, text:"Running..."});
+        try{
+          const res = await runUser(pyodide, code);
+          const glb = res.glb;
+          const out = res.out;
+          const err = res.err;
+          const codeNorm = res.code;
+          const get = (name) => {
+            const pyv = glb.get(name);
+            if (pyv === undefined || pyv === null) return undefined;
+            return (typeof pyv.toJs === "function") ? pyv.toJs() : pyv;
+          };
+
+          const qpass = await check({glb, out, err, code: codeNorm, get});
+
+          // Snapshot variables
+          let snapshot = {};
+          try {
+            const ks = glb.keys();
+            const names = (typeof ks.toJs === "function") ? ks.toJs() : [];
+            for (const k of names) {
+              const v = glb.get(k);
+              snapshot[k] = (v && typeof v.toJs === "function") ? v.toJs() : v;
+            }
+          } catch (_) {}
+
+          setStatus({
+            ok: qpass,
+            text: qpass ? "Correct" : "Not correct. See hints.",
+            lastOut: out,
+            lastErr: err,
+            lastVars: snapshot
+          });
+
+          glb.destroy && glb.destroy();
+
+        }catch(e){
+          setStatus({ok:false, text:"Python error: " + e.message});
+        }
+      }
+
+      return (
+        <Card title={title}>
+          <p>{prompt}</p>
+          <textarea className="w-full h-28 border rounded-xl p-3 mono" value={code} onChange={e=>setCode(e.target.value)} placeholder={example || "Write Python here..."} />
+          <div className="flex items-center gap-3">
+            <button onClick={run} className="px-4 py-2 rounded-xl bg-blue-600 text-white shadow">Run</button>
+            <Pill ok={status.ok} text={status.text} />
+            {(status.lastOut || status.lastErr) && (
+              <div className="text-xs mono text-gray-700">
+                {status.lastOut ? <div>stdout: {String(status.lastOut)}</div> : null}
+                {status.lastErr ? <div>stderr: {String(status.lastErr)}</div> : null}
+              </div>
+            )}
+            {status.lastVars && Object.keys(status.lastVars).length > 0 && (
+              <pre className="bg-slate-100 text-slate-800 text-xs p-2 rounded mono overflow-auto">
+                {JSON.stringify(status.lastVars, null, 2)}
+              </pre>
+            )}
+            {!pyodide && <Loader />}
+          </div>
+          {example && <Code>{example}</Code>}
+        </Card>
+      );
+    }
+
+    function App(){
+      const [score, setScore] = useState(0);
+      const [done, setDone] = useState({});
+      function onPass(key){
+        if (!done[key]) {
+          setDone(prev => ({...prev, [key]: true}));
+          setScore(s => s + 1);
+        }
+      }
+      const total = 9;
+      const progress = Math.round(Object.keys(done).length/total*100);
+
+      return (
+        <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100">
+          <header className="max-w-5xl mx-auto px-6 py-8">
+            <h1 className="text-3xl font-bold tracking-tight">Python Class 9 · Dictionaries / Hash Tables (Hands-on)</h1>
+            <p className="text-gray-600 mt-1">Complete {total} quizzes. Real Python runs in your browser.</p>
+          </header>
+
+          <main className="max-w-5xl mx-auto px-6 pb-20 space-y-6">
+            <div className="rounded-2xl border bg-white p-5 flex items-center gap-4 shadow-sm">
+              <div className="w-28">
+                <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+                  <div className="h-3 bg-blue-600" style={{ width: progress + "%" }} />
+                </div>
+              </div>
+              <div className="text-sm text-gray-700">Progress: {Object.keys(done).length}/{total} · Score: {score}</div>
+              <div className="ml-auto text-sm text-gray-500">Tip: Use the examples as a starting point.</div>
+            </div>
+
+            <Intro />
+
+            <PyQuiz
+              id="q1"
+              title="Q1 · make an empty dict"
+              prompt='Create d = {}. Pass if it is empty and your code uses the literal {}.'
+              example={`d = {}`}
+              check={({get, code}) => {
+                const d = get("d");
+                const usedLiteral = /(^|\n)\s*d\s*=\s*\{\}/.test(code);
+                const ok = (isMap(d) || isPlainObj(d)) && dictSize(d) === 0 && usedLiteral;
+                if (ok) onPass("q1");
+                return ok;
+              }}
+            />
+
+            <PyQuiz
+              id="q2"
+              title="Q2 · get by key with []"
+              prompt='Use user = {"name":"Ana"}; make x = user["name"]. Pass if x == "Ana" and code contains ["name"].'
+              example={`user = {"name": "Ana"}\nx = user["name"]`}
+              check={({get, code}) => {
+                const x = get("x");
+                const used = /\["name"\]/.test(code) || /\['name'\]/.test(code);
+                const ok = x === "Ana" && used;
+                if (ok) onPass("q2");
+                return ok;
+              }}
+            />
+
+            <PyQuiz
+              id="q3"
+              title="Q3 · insert and overwrite"
+              prompt='Start with prices = {"apple":1}. Add prices["banana"] = 2 and overwrite prices["apple"] = 3. Pass if prices has {"apple":3,"banana":2}.'
+              example={`prices = {"apple": 1}\nprices["banana"] = 2\nprices["apple"] = 3`}
+              check={({get}) => {
+                const prices = get("prices");
+                const ok = entriesEqual(prices, [["apple",3],["banana",2]]);
+                if (ok) onPass("q3");
+                return ok;
+              }}
+            />
+
+            <PyQuiz
+              id="q4"
+              title="Q4 · pop and del"
+              prompt='Use d = {"a":1,"b":2}. Do v = d.pop("b"); then del d["a"]. Pass if v == 2 and d is empty; code must use .pop( and the keyword del.'
+              example={`d = {"a":1,"b":2}\nv = d.pop("b")\ndel d["a"]`}
+              check={({get, code}) => {
+                const d = get("d");
+                const v = get("v");
+                const hasPop = /\.pop\(/.test(code);
+                const hasDel = /\bdel\s+d\[\s*["']a["']\s*\]/.test(code);
+                const ok = v === 2 && dictSize(d) === 0 && hasPop && hasDel;
+                if (ok) onPass("q4");
+                return ok;
+              }}
+            />
+
+            <PyQuiz
+              id="q5"
+              title="Q5 · membership test and add missing key"
+              prompt='Use rec = {"name":"Bob"}. If "id" not in rec, set rec["id"] = 100. Pass if "id" in rec and rec["id"] == 100; code must use the keyword in.'
+              example={`rec = {"name":"Bob"}\nif "id" not in rec:\n    rec["id"] = 100`}
+              check={({get, code}) => {
+                const rec = get("rec");
+                const usedIn = /\bin\b/.test(code);
+                const has = dictHas(rec, "id") && dictGet(rec, "id") === 100;
+                const ok = usedIn && has;
+                if (ok) onPass("q5");
+                return ok;
+              }}
+            />
+
+            <PyQuiz
+              id="q6"
+              title="Q6 · keys, values, items"
+              prompt='Use d = {1:"a", 2:"b"}. Make ks = list(d.keys()), vs = list(d.values()), it = list(d.items()). Pass if len(ks) == len(vs) == 2 and len(it) == 2 and code uses .keys and .items.'
+              example={`d = {1:"a", 2:"b"}\nks = list(d.keys())\nvs = list(d.values())\nit = list(d.items())`}
+              check={({get, code}) => {
+                const ks = get("ks"); const vs = get("vs"); const it = get("it");
+                const usedK = /\.keys\(/.test(code);
+                const usedI = /\.items\(/.test(code);
+                const ok = Array.isArray(ks) && Array.isArray(vs) && Array.isArray(it) && ks.length===2 && vs.length===2 && it.length===2 && usedK && usedI;
+                if (ok) onPass("q6");
+                return ok;
+              }}
+            />
+
+            <PyQuiz
+              id="q7"
+              title="Q7 · dict comprehension"
+              prompt='Create squares = {n: n*n for n in range(4)}. Pass if squares has pairs (0,0) and (3,9), and code contains for n in range('
+              example={`squares = {n: n*n for n in range(4)}`}
+              check={({get, code}) => {
+                const squares = get("squares");
+                const hasFor = /for\s+\w+\s+in\s+range\(/.test(code);
+                const ok = hasFor && dictHas(squares, 0) && dictGet(squares, 0) === 0 && dictHas(squares, 3) && dictGet(squares, 3) === 9;
+                if (ok) onPass("q7");
+                return ok;
+              }}
+            />
+
+            <PyQuiz
+              id="q8"
+              title="Q8 · tuple as a key (hashable)"
+              prompt='Make k = (1,2); d = {k: "ok"}; val = d[(1,2)]. Pass if val == "ok".'
+              example={`k = (1,2)\nd = {k: "ok"}\nval = d[(1,2)]`}
+              check={({get}) => {
+                const val = get("val");
+                const ok = val === "ok";
+                if (ok) onPass("q8");
+                return ok;
+              }}
+            />
+
+            <PyQuiz
+              id="q9"
+              title="Q9 · copy vs alias (identity)"
+              prompt='Start with a = {"x":1}. Make b = a; same = (a is b). Then make c = a.copy(); set a["y"] = 2. Pass if same is True, "y" in a, and "y" not in c; code must use .copy('
+              example={`a = {"x":1}\nb = a\nsame = (a is b)\nc = a.copy()\na["y"] = 2`}
+              check={({get, code}) => {
+                const a = get("a"); const c = get("c"); const same = get("same");
+                const usedCopy = /\.copy\(/.test(code);
+                const ok = same === true && dictHas(a, "y") && !dictHas(c, "y") && usedCopy;
+                if (ok) onPass("q9");
+                return ok;
+              }}
+            />
+
+            <Card title="Recap & Tips" footer="Dictionaries are Python’s built-in hash tables. Prefer clear key operations, use .get with a default for optional keys, and copy carefully when you need independence.">
+              <ul className="list-disc ml-6 space-y-1">
+                <li>Membership tests check keys: <span className="mono">'id' in rec</span>.</li>
+                <li>Use <span className="mono">d.get(k, default)</span> to avoid KeyError.</li>
+                <li>For predictable ordering when printing, rely on Python 3.7+ dicts preserving insertion order—or convert to a sorted list of items.</li>
+              </ul>
+            </Card>
+          </main>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<App />);
+  </script>
+</body>
+</html>
