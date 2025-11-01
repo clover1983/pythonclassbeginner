@@ -151,7 +151,7 @@
           let snapshot = {};
           try {
             const ks = glb.keys();
-            const names = (typeof ks.toJs === "function") ? ks.toJs() : [];
+            let names = (typeof ks.toJs === "function") ? ks.toJs() : [];
             names = Array.from(names).filter(name => name !== '__builtins__');
             for (const k of names) {
               const v = glb.get(k);
