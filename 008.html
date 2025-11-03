@@ -147,35 +147,62 @@
     }
 
     // Generic quiz component
-    function PyQuiz({id, title, prompt, starter="", example, check}){
+    function PyQuiz({
+      id,
+      title,
+      prompt,
+      starter = "",
+      // 新增两个可选内容：引导提示（半对/引导思路）与最终答案
+      guide,                 // e.g. "提示思路/不完全代码"
+      solution,              // e.g. "完全正确的参考解"
+      example,               // 兼容老参数：当作 solution 用
+      // 解锁阈值（可按题目定制）
+      minTriesForGuide = 3,      // 尝试 ≥ 3 次才解锁引导提示
+      minTriesForSolution = 5,   // 尝试 ≥ 5 次才解锁最终答案
+      check
+    }) {
       const { pyodide, err } = usePyRunner();
-      const [code, setCode] = useState(starter);
-      const [status, setStatus] = useState({ ok: null, text: "Waiting for input" });
-      const [showHint, setShowHint] = useState(false);
+      const [code, setCode] = React.useState(starter);
+      const [status, setStatus] = React.useState({ ok: null, text: "Waiting for input" });
 
-      async function run(){
-        if(!pyodide){ setStatus({ok:null, text:"Python not ready"}); return; }
-        setStatus({ok:null, text:"Running..."});
-        try{
+      // 统计尝试次数（点击 Run 就 +1，不管对错；你也可以改成“错误时才 +1”）
+      const [tries, setTries] = React.useState(0);
+
+      // 控制展开
+      const [showGuide, setShowGuide] = React.useState(false);
+      const [showSolution, setShowSolution] = React.useState(false);
+
+      // 兼容：如果传了 example，但没传 solution，则把 example 当成 solution
+      const finalSolution = solution ?? example ?? null;
+
+      async function run() {
+        if (!pyodide) { setStatus({ ok: null, text: "Python not ready" }); return; }
+        setStatus({ ok: null, text: "Running..." });
+
+        // 每次点击都记一次尝试
+        setTries(t => t + 1);
+
+        try {
           const res = await runUser(pyodide, code);
           const glb = res.glb;
           const out = res.out;
           const err = res.err;
           const codeNorm = res.code;
+
           const get = (name) => {
             const pyv = glb.get(name);
             if (pyv === undefined || pyv === null) return undefined;
             return (typeof pyv.toJs === "function") ? pyv.toJs() : pyv;
           };
 
-          const qpass = await check({glb, out, err, code: codeNorm, get});
+          const qpass = await check({ glb, out, err, code: codeNorm, get });
 
-          // Snapshot variables
+          // 变量快照
           let snapshot = {};
           try {
             const ks = glb.keys();
             let names = (typeof ks.toJs === "function") ? ks.toJs() : [];
-            names = Array.from(names).filter(name => name !== '__builtins__');
+            names = Array.from(names).filter(n => n !== "__builtins__");
             for (const k of names) {
               const v = glb.get(k);
               snapshot[k] = (v && typeof v.toJs === "function") ? v.toJs() : v;
@@ -191,18 +218,30 @@
           });
 
           glb.destroy && glb.destroy();
-
-        }catch(e){
-          setStatus({ok:false, text:"Python error: " + e.message});
+        } catch (e) {
+          setStatus({ ok: false, text: "Python error: " + e.message });
         }
       }
+
+      // 还差多少次解锁
+      const triesLeftForGuide = Math.max(0, minTriesForGuide - tries);
+      const triesLeftForSolution = Math.max(0, minTriesForSolution - tries);
 
       return (
         <Card title={title}>
           <p>{prompt}</p>
-          <textarea className="w-full h-28 border rounded-xl p-3 mono" value={code} onChange={e=>setCode(e.target.value)} placeholder="Write Python here..." />
+
+          <textarea
+            className="w-full h-96 border rounded-xl p-3 mono"
+            value={code}
+            onChange={e => setCode(e.target.value)}
+            placeholder="Write Python here..."
+          />
+
           <div className="flex items-center gap-3">
-            <button onClick={run} className="px-4 py-2 rounded-xl bg-blue-600 text-white shadow">Run</button>
+            <button onClick={run} className="px-4 py-2 rounded-xl bg-blue-600 text-white shadow">
+              Run
+            </button>
             <Pill ok={status.ok} text={status.text} />
             {(status.lastOut || status.lastErr) && (
               <div className="text-xs mono text-gray-700">
@@ -217,16 +256,47 @@
             )}
             {!pyodide && <Loader />}
           </div>
-          {example && (
-            <div className="mt-2">
+
+          {/* 引导提示（不完全正确，解锁后可展开） */}
+          {guide && (
+            <div className="mt-3 flex items-center gap-2">
               <button
-                onClick={() => setShowHint(s => !s)}
-                className="px-3 py-1 rounded-lg text-sm border bg-white hover:bg-gray-50"
+                onClick={() => setShowGuide(s => !s)}
+                className={
+                  "px-3 py-1 rounded-lg text-sm border " +
+                  (tries >= minTriesForGuide ? "bg-white hover:bg-gray-50" : "bg-gray-100 text-gray-400 cursor-not-allowed")
+                }
+                disabled={tries < minTriesForGuide}
+                title={tries < minTriesForGuide ? `Try ${minTriesForGuide - tries} more time(s) to unlock hint` : ""}
               >
-                {showHint ? "Hide hint" : "Show hint"}
+                {showGuide ? "Hide hint" : (tries >= minTriesForGuide ? "Show hint" : `Hint locked (${triesLeftForGuide} left)`)}
               </button>
-              {showHint && <Code>{example}</Code>}
             </div>
+          )}
+          {guide && showGuide && tries >= minTriesForGuide && (
+            <Code>{guide}</Code>
+          )}
+
+          {/* 最终答案/完全示例（到达更高阈值才解锁） */}
+          {finalSolution && (
+            <div className="mt-2 flex items-center gap-2">
+              <button
+                onClick={() => setShowSolution(s => !s)}
+                className={
+                  "px-3 py-1 rounded-lg text-sm " +
+                  (tries >= minTriesForSolution
+                    ? "bg-blue-600 text-white hover:bg-blue-700"
+                    : "border bg-gray-100 text-gray-400 cursor-not-allowed")
+                }
+                disabled={tries < minTriesForSolution}
+                title={tries < minTriesForSolution ? `Try ${minTriesForSolution - tries} more time(s) to unlock solution` : ""}
+              >
+                {showSolution ? "Hide solution" : (tries >= minTriesForSolution ? "Show solution" : `Solution locked (${triesLeftForSolution} left)`)}
+              </button>
+            </div>
+          )}
+          {finalSolution && showSolution && tries >= minTriesForSolution && (
+            <Code>{finalSolution}</Code>
           )}
         </Card>
       );
@@ -291,7 +361,7 @@
               id="q1"
               title="Q1 · make an empty set"
               prompt='Create s = set(). Pass if it is empty and your code uses set().'
-              example={`s = set()`}
+              solution={`s = set()`}
               check={({get, code}) => {
                 const s = get("s");
                 const used = /(^|\n)\s*s\s*=\s*set\(\s*\)/.test(code);
@@ -305,7 +375,7 @@
               id="q2"
               title="Q2 · literal set (non-empty)"
               prompt='Create evens = {2, 4, 6}. Pass if it contains exactly 2,4,6 and code uses curly braces.'
-              example={`evens = {2, 4, 6}`}
+              solution={`evens = {2, 4, 6}`}
               check={({get, code}) => {
                 const evens = get("evens");
                 const usedBraces = /\{[^}]*\}/.test(code);
@@ -319,7 +389,7 @@
               id="q3"
               title="Q3 · add and remove"
               prompt='Start with s = {1,2}. Add 3, then remove 2. Pass if s == {1,3} and code uses .add( and .remove('
-              example={`s = {1,2}\ns.add(3)\ns.remove(2)`}
+              solution={`s = {1,2}\ns.add(3)\ns.remove(2)`}
               check={({get, code}) => {
                 const s = get("s");
                 const hasAdd = /.add\(/.test(code);
@@ -334,7 +404,7 @@
               id="q4"
               title="Q4 · discard without error"
               prompt='Start with s = {1}. Call s.discard(2). Pass if s is still {1} and code uses .discard('
-              example={`s = {1}\ns.discard(2)`}
+              solution={`s = {1}\ns.discard(2)`}
               check={({get, code}) => {
                 const s = get("s");
                 const hasDiscard = /.discard\(/.test(code);
@@ -348,7 +418,7 @@
               id="q5"
               title="Q5 · membership and len"
               prompt='Use animals = {"cat","dog"}. If "fox" not in animals, add it. Pass if "fox" is in animals and len == 3; code must use the keyword in.'
-              example={`animals = {"cat","dog"}\nif "fox" not in animals:\n    animals.add("fox")`}
+              solution={`animals = {"cat","dog"}\nif "fox" not in animals:\n    animals.add("fox")`}
               check={({get, code}) => {
                 const animals = get("animals");
                 const usedIn = /\bin\b/.test(code);
@@ -362,7 +432,7 @@
               id="q6"
               title="Q6 · intersection"
               prompt='With a = {1,2,3} and b = {3,4}, make i = a & b (or a.intersection(b)). Pass if i == {3} and code uses & or .intersection('
-              example={`a = {1,2,3}\nb = {3,4}\ni = a & b`}
+              solution={`a = {1,2,3}\nb = {3,4}\ni = a & b`}
               check={({get, code}) => {
                 const i = get("i");
                 const usedOp = /a\s*&\s*b/.test(code) || /\.intersection\(/.test(code);
@@ -376,7 +446,7 @@
               id="q7"
               title="Q7 · de-duplicate a list"
               prompt='Use nums = [1,1,2,3,3]; make uniq = set(nums). Pass if uniq == {1,2,3} and code uses set('
-              example={`nums = [1,1,2,3,3]\nuniq = set(nums)`}
+              solution={`nums = [1,1,2,3,3]\nuniq = set(nums)`}
               check={({get, code}) => {
                 const uniq = get("uniq");
                 const used = /set\(/.test(code);
@@ -390,7 +460,7 @@
               id="q8"
               title="Q8 · set comprehension"
               prompt='Create squares = {n*n for n in range(5)}. Pass if it equals {0,1,4,9,16} and code contains for n in range('
-              example={`squares = {n*n for n in range(5)}`}
+              solution={`squares = {n*n for n in range(5)}`}
               check={({get, code}) => {
                 const squares = get("squares");
                 const hasFor = /for\s+\w+\s+in\s+range\(/.test(code);
@@ -403,7 +473,7 @@
               id="q9"
               title="Q9 · frozenset immutability"
               prompt='Make fs = frozenset({1,2}). Then try calling fs.add(3) inside try/except. If exception happens, set imm = True. Pass if imm == True.'
-              example={`fs = frozenset({1,2})\nimm = False\ntry:\n    fs.add(3)\nexcept:\n    imm = True`}
+              solution={`fs = frozenset({1,2})\nimm = False\ntry:\n    fs.add(3)\nexcept:\n    imm = True`}
               check={({get, code}) => {
                 const imm = get("imm");
                 const usedFrozen = /frozenset\(/.test(code);

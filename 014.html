@@ -139,35 +139,62 @@
     }
 
     // Generic quiz component
-    function PyQuiz({id, title, prompt, starter="", example, check}){
+    function PyQuiz({
+      id,
+      title,
+      prompt,
+      starter = "",
+      // 新增两个可选内容：引导提示（半对/引导思路）与最终答案
+      guide,                 // e.g. "提示思路/不完全代码"
+      solution,              // e.g. "完全正确的参考解"
+      example,               // 兼容老参数：当作 solution 用
+      // 解锁阈值（可按题目定制）
+      minTriesForGuide = 3,      // 尝试 ≥ 3 次才解锁引导提示
+      minTriesForSolution = 5,   // 尝试 ≥ 5 次才解锁最终答案
+      check
+    }) {
       const { pyodide, err } = usePyRunner();
-      const [code, setCode] = useState(starter);
-      const [status, setStatus] = useState({ ok: null, text: "Waiting for input" });
-      const [showHint, setShowHint] = useState(false);
+      const [code, setCode] = React.useState(starter);
+      const [status, setStatus] = React.useState({ ok: null, text: "Waiting for input" });
 
-      async function run(){
-        if(!pyodide){ setStatus({ok:null, text:"Python not ready"}); return; }
-        setStatus({ok:null, text:"Running..."});
-        try{
+      // 统计尝试次数（点击 Run 就 +1，不管对错；你也可以改成“错误时才 +1”）
+      const [tries, setTries] = React.useState(0);
+
+      // 控制展开
+      const [showGuide, setShowGuide] = React.useState(false);
+      const [showSolution, setShowSolution] = React.useState(false);
+
+      // 兼容：如果传了 example，但没传 solution，则把 example 当成 solution
+      const finalSolution = solution ?? example ?? null;
+
+      async function run() {
+        if (!pyodide) { setStatus({ ok: null, text: "Python not ready" }); return; }
+        setStatus({ ok: null, text: "Running..." });
+
+        // 每次点击都记一次尝试
+        setTries(t => t + 1);
+
+        try {
           const res = await runUser(pyodide, code);
           const glb = res.glb;
           const out = res.out;
           const err = res.err;
           const codeNorm = res.code;
+
           const get = (name) => {
             const pyv = glb.get(name);
             if (pyv === undefined || pyv === null) return undefined;
             return (typeof pyv.toJs === "function") ? pyv.toJs() : pyv;
           };
 
-          const qpass = await check({glb, out, err, code: codeNorm, get});
+          const qpass = await check({ glb, out, err, code: codeNorm, get });
 
-          // Snapshot variables
+          // 变量快照
           let snapshot = {};
           try {
             const ks = glb.keys();
             let names = (typeof ks.toJs === "function") ? ks.toJs() : [];
-            names = Array.from(names).filter(name => name !== '__builtins__');
+            names = Array.from(names).filter(n => n !== "__builtins__");
             for (const k of names) {
               const v = glb.get(k);
               snapshot[k] = (v && typeof v.toJs === "function") ? v.toJs() : v;
@@ -183,18 +210,30 @@
           });
 
           glb.destroy && glb.destroy();
-
-        }catch(e){
-          setStatus({ok:false, text:"Python error: " + e.message});
+        } catch (e) {
+          setStatus({ ok: false, text: "Python error: " + e.message });
         }
       }
+
+      // 还差多少次解锁
+      const triesLeftForGuide = Math.max(0, minTriesForGuide - tries);
+      const triesLeftForSolution = Math.max(0, minTriesForSolution - tries);
 
       return (
         <Card title={title}>
           <p>{prompt}</p>
-          <textarea className="w-full h-96 border rounded-xl p-3 mono" value={code} onChange={e=>setCode(e.target.value)} placeholder="Write Python here..." />
+
+          <textarea
+            className="w-full h-96 border rounded-xl p-3 mono"
+            value={code}
+            onChange={e => setCode(e.target.value)}
+            placeholder="Write Python here..."
+          />
+
           <div className="flex items-center gap-3">
-            <button onClick={run} className="px-4 py-2 rounded-xl bg-blue-600 text-white shadow">Run</button>
+            <button onClick={run} className="px-4 py-2 rounded-xl bg-blue-600 text-white shadow">
+              Run
+            </button>
             <Pill ok={status.ok} text={status.text} />
             {(status.lastOut || status.lastErr) && (
               <div className="text-xs mono text-gray-700">
@@ -209,16 +248,47 @@
             )}
             {!pyodide && <Loader />}
           </div>
-          {example && (
-            <div className="mt-2">
+
+          {/* 引导提示（不完全正确，解锁后可展开） */}
+          {guide && (
+            <div className="mt-3 flex items-center gap-2">
               <button
-                onClick={() => setShowHint(s => !s)}
-                className="px-3 py-1 rounded-lg text-sm border bg-white hover:bg-gray-50"
+                onClick={() => setShowGuide(s => !s)}
+                className={
+                  "px-3 py-1 rounded-lg text-sm border " +
+                  (tries >= minTriesForGuide ? "bg-white hover:bg-gray-50" : "bg-gray-100 text-gray-400 cursor-not-allowed")
+                }
+                disabled={tries < minTriesForGuide}
+                title={tries < minTriesForGuide ? `Try ${minTriesForGuide - tries} more time(s) to unlock hint` : ""}
               >
-                {showHint ? "Hide hint" : "Show hint"}
+                {showGuide ? "Hide hint" : (tries >= minTriesForGuide ? "Show hint" : `Hint locked (${triesLeftForGuide} left)`)}
               </button>
-              {showHint && <Code>{example}</Code>}
             </div>
+          )}
+          {guide && showGuide && tries >= minTriesForGuide && (
+            <Code>{guide}</Code>
+          )}
+
+          {/* 最终答案/完全示例（到达更高阈值才解锁） */}
+          {finalSolution && (
+            <div className="mt-2 flex items-center gap-2">
+              <button
+                onClick={() => setShowSolution(s => !s)}
+                className={
+                  "px-3 py-1 rounded-lg text-sm " +
+                  (tries >= minTriesForSolution
+                    ? "bg-blue-600 text-white hover:bg-blue-700"
+                    : "border bg-gray-100 text-gray-400 cursor-not-allowed")
+                }
+                disabled={tries < minTriesForSolution}
+                title={tries < minTriesForSolution ? `Try ${minTriesForSolution - tries} more time(s) to unlock solution` : ""}
+              >
+                {showSolution ? "Hide solution" : (tries >= minTriesForSolution ? "Show solution" : `Solution locked (${triesLeftForSolution} left)`)}
+              </button>
+            </div>
+          )}
+          {finalSolution && showSolution && tries >= minTriesForSolution && (
+            <Code>{finalSolution}</Code>
           )}
         </Card>
       );
@@ -284,7 +354,8 @@
               id="q1"
               title="Q1 · sum 0..4 with while"
               prompt='Use a while-loop to compute total = 0+1+2+3+4. Start i = 0 and loop while i < 5. Pass if total == 10 and code uses while.'
-              example={`total = 0\ni = 0\nwhile i < 5:\n    total += i\n    i += 1`}
+              guide={`total = 0\ni = 0\nwhile i < 9:\n    total += i\n    i += 2`}
+              solution={`total = 0\ni = 0\nwhile i < 5:\n    total += i\n    i += 1`}
               check={({get, code}) => {
                 const total = get("total");
                 const usedWhile = /\bwhile\b/.test(code);
@@ -298,7 +369,8 @@
               id="q2"
               title="Q2 · first multiple of 7 (break)"
               prompt='Find first7 by looping i from 1 upward in a while True loop, incrementing i each time, breaking when i%7==0. Pass if first7 == 7 and code uses break.'
-              example={`first7 = None\ni = 1\nwhile True:\n    if i % 7 == 0:\n        first7 = i\n        break\n    i += 1`}
+              guide={`first6 = None\ni = 1\nwhile True:\n    if i % 6 == 0:\n        first6 = i\n        break\n    i += 1`}
+              solution={`first7 = None\ni = 1\nwhile True:\n    if i % 7 == 0:\n        first7 = i\n        break\n    i += 1`}
               check={({get, code}) => {
                 const first7 = get("first7");
                 const hasBreak = /\bbreak\b/.test(code);
@@ -312,7 +384,8 @@
               id="q3"
               title="Q3 · continue for odds"
               prompt='Collect odds under 6 into odds = [1,3,5] using a while-loop and continue. Pass if odds == [1,3,5] and code uses continue.'
-              example={`odds = []\ni = 0\nwhile i < 6:\n    i += 1\n    if i % 2 == 0:\n        continue\n    odds.append(i)`}
+              guide={`odds = []\ni = 0\nwhile i < 4:\n    i += 1\n    if i % 3 == 0:\n        continue\n    odds.append(i)`}
+              solution={`odds = []\ni = 0\nwhile i < 6:\n    i += 1\n    if i % 2 == 0:\n        continue\n    odds.append(i)`}
               check={({get, code}) => {
                 const odds = get("odds");
                 const hasCont = /\bcontinue\b/.test(code);
@@ -327,7 +400,8 @@
               id="q4"
               title="Q4 · sentinel value"
               prompt='Given xs = [3,2,0,5], read values with an index in a while loop until you hit 0; store all values before 0 into before. Pass if before == [3,2].'
-              example={`xs = [3,2,0,5]\nbefore = []\ni = 0\nwhile i < len(xs) and xs[i] != 0:\n    before.append(xs[i])\n    i += 1`}
+              guide={`xs = [34,20,1,55,22,33,87,99]\nbefore = []\ni = 0\nwhile i < len(xs) and xs[i] != 0:\n    before.append(xs[i])\n    i += 2`}
+              solution={`xs = [3,2,0,5]\nbefore = []\ni = 0\nwhile i < len(xs) and xs[i] != 0:\n    before.append(xs[i])\n    i += 1`}
               check={({get, code}) => {
                 const before = get("before");
                 const ok = Array.isArray(before) && before.join(",") === "3,2";
@@ -341,7 +415,8 @@
               id="q5"
               title="Q5 · while–else (not found)"
               prompt='Search for 13 in nums = [10,11,12] using while with an else: clause; set found = True if break happens, else found = False. Pass if found is False and code uses while...else.'
-              example={`nums = [10,11,12]\nfound = False\ni = 0\nwhile i < len(nums):\n    if nums[i] == 13:\n        found = True\n        break\n    i += 1\nelse:\n    found = False`}
+              guide={`nums = [9,10,11]\nfound = False\ni = 0\nwhile i < len(nums):\n    if nums[i] == 15:\n        found = True\n        break\n    i += 1\nelse:\n    found = False`}
+              solution={`nums = [10,11,12]\nfound = False\ni = 0\nwhile i < len(nums):\n    if nums[i] == 13:\n        found = True\n        break\n    i += 1\nelse:\n    found = False`}
               check={({get, code}) => {
                 const found = get("found");
                 const hasElse = /while[\s\S]*else\s*:/.test(code);
@@ -355,7 +430,8 @@
               id="q6"
               title="Q6 · translate for → while"
               prompt='Make squares = [0,1,4,9,16] using a while loop (not a for). Pass if list matches and code contains while but not for.'
-              example={`squares = []\ni = 0\nwhile i < 5:\n    squares.append(i*i)\n    i += 1`}
+              guide={`squares = []\ni = 0\nwhile i < 8:\n    squares.append(i*i)\n    i += 2`}
+              solution={`squares = []\ni = 0\nwhile i < 5:\n    squares.append(i*i)\n    i += 1`}
               check={({get, code}) => {
                 const squares = get("squares");
                 const ok = Array.isArray(squares) && squares.length === 5 && squares[4] === 16;
@@ -370,7 +446,8 @@
               id="q7"
               title="Q7 · simulate input in a while-loop"
               prompt='Simulate user input to unlock password \"python\". Prepare inputs = [\"\", \"python\"]. Define input = lambda prompt=\"\": inputs.pop(0). Loop while password != \"python\": call input each time. At the end, attempts should be 2 and password == \"python\". Pass if so and code uses input( and while.'
-              example={`inputs = [\"\", \"python\"]\ninput = lambda prompt=\"\": inputs.pop(0)\npassword = \"\"\nattempts = 0\nwhile password != \"python\":\n    password = input(\"Enter password: \")\n    attempts += 1`}
+              guide={`inputs = [\"\", \"python\"]\ninput = lambda prompt=\"\": inputs.pop(0)\npassword = \"\"\nattempts = 0\nwhile password != \"newpassword\":\n    password = input(\"Enter password: \")\n    attempts += 1`}
+              solution={`inputs = [\"\", \"python\"]\ninput = lambda prompt=\"\": inputs.pop(0)\npassword = \"\"\nattempts = 0\nwhile password != \"python\":\n    password = input(\"Enter password: \")\n    attempts += 1`}
               check={({get, code}) => {
                 const attempts = get("attempts");
                 const password = get("password");
@@ -386,7 +463,8 @@
               id="q8"
               title="Q8 · ensure loop terminates"
               prompt='Start with n = 5. Write a while loop that decrements n until it reaches 0. Pass if n == 0 and code uses while.'
-              example={`n = 5\nwhile n > 0:\n    n -= 1`}
+              guide={`n = 10\nwhile n > 0:\n    n -= 2`}
+              solution={`n = 5\nwhile n > 0:\n    n -= 1`}
               check={({get, code}) => {
                 const n = get("n");
                 const usedWhile = /\bwhile\b/.test(code);
@@ -400,7 +478,8 @@
               id="q9"
               title="Q9 · choose the right loop"
               prompt='Set choice = \"while\" if you should \"repeat until a condition becomes False\"; set choice = \"for\" otherwise. For this task, set choice to \"while\". Pass if choice == \"while\".'
-              example={`choice = \"while\"`}
+              guide={`choice = while`}
+              solution={`choice = \"while\"`}
               check={({get}) => {
                 const choice = get("choice");
                 const pass = choice === "while";

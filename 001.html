@@ -128,35 +128,63 @@
       );
     }
 
-    // Reusable Python quiz with textarea
-    function PyQuiz({id, title, prompt, starter="", example, check}){
+    // Generic quiz component
+    function PyQuiz({
+      id,
+      title,
+      prompt,
+      starter = "",
+      // 新增两个可选内容：引导提示（半对/引导思路）与最终答案
+      guide,                 // e.g. "提示思路/不完全代码"
+      solution,              // e.g. "完全正确的参考解"
+      example,               // 兼容老参数：当作 solution 用
+      // 解锁阈值（可按题目定制）
+      minTriesForGuide = 3,      // 尝试 ≥ 3 次才解锁引导提示
+      minTriesForSolution = 5,   // 尝试 ≥ 5 次才解锁最终答案
+      check
+    }) {
       const { pyodide, err } = usePyRunner();
-      const [code, setCode] = useState(starter);
-      const [status, setStatus] = useState({ ok: null, text: "Waiting for input" });
-      const [showHint, setShowHint] = useState(false);
+      const [code, setCode] = React.useState(starter);
+      const [status, setStatus] = React.useState({ ok: null, text: "Waiting for input" });
 
-      async function run(){
-        if(!pyodide){ setStatus({ok:null, text:"Python not ready"}); return; }
-        setStatus({ok:null, text:"Running..."});
-        try{
+      // 统计尝试次数（点击 Run 就 +1，不管对错；你也可以改成“错误时才 +1”）
+      const [tries, setTries] = React.useState(0);
+
+      // 控制展开
+      const [showGuide, setShowGuide] = React.useState(false);
+      const [showSolution, setShowSolution] = React.useState(false);
+
+      // 兼容：如果传了 example，但没传 solution，则把 example 当成 solution
+      const finalSolution = solution ?? example ?? null;
+
+      async function run() {
+        if (!pyodide) { setStatus({ ok: null, text: "Python not ready" }); return; }
+        setStatus({ ok: null, text: "Running..." });
+
+        // 每次点击都记一次尝试
+        setTries(t => t + 1);
+
+        try {
           const res = await runUser(pyodide, code);
-          const glb = res.glb;  // PyProxy (dict)
+          const glb = res.glb;
           const out = res.out;
           const err = res.err;
           const codeNorm = res.code;
-          const toJsVal = (name) => {
+
+          const get = (name) => {
             const pyv = glb.get(name);
             if (pyv === undefined || pyv === null) return undefined;
             return (typeof pyv.toJs === "function") ? pyv.toJs() : pyv;
           };
-          const qpass = await check({ glb, out, err, code: codeNorm, get: toJsVal });
 
-          // 变量快照（把 glb 中用户定义的变量转成 JS 值）
+          const qpass = await check({ glb, out, err, code: codeNorm, get });
+
+          // 变量快照
           let snapshot = {};
           try {
             const ks = glb.keys();
             let names = (typeof ks.toJs === "function") ? ks.toJs() : [];
-            names = Array.from(names).filter(name => name !== '__builtins__');
+            names = Array.from(names).filter(n => n !== "__builtins__");
             for (const k of names) {
               const v = glb.get(k);
               snapshot[k] = (v && typeof v.toJs === "function") ? v.toJs() : v;
@@ -172,17 +200,30 @@
           });
 
           glb.destroy && glb.destroy();
-        }catch(e){
-          setStatus({ok:false, text:"Python error: " + e.message});
+        } catch (e) {
+          setStatus({ ok: false, text: "Python error: " + e.message });
         }
       }
+
+      // 还差多少次解锁
+      const triesLeftForGuide = Math.max(0, minTriesForGuide - tries);
+      const triesLeftForSolution = Math.max(0, minTriesForSolution - tries);
 
       return (
         <Card title={title}>
           <p>{prompt}</p>
-          <textarea className="w-full h-28 border rounded-xl p-3 mono" value={code} onChange={e=>setCode(e.target.value)} placeholder="Write Python here..." />
+
+          <textarea
+            className="w-full h-96 border rounded-xl p-3 mono"
+            value={code}
+            onChange={e => setCode(e.target.value)}
+            placeholder="Write Python here..."
+          />
+
           <div className="flex items-center gap-3">
-            <button onClick={run} className="px-4 py-2 rounded-xl bg-blue-600 text-white shadow">Run</button>
+            <button onClick={run} className="px-4 py-2 rounded-xl bg-blue-600 text-white shadow">
+              Run
+            </button>
             <Pill ok={status.ok} text={status.text} />
             {(status.lastOut || status.lastErr) && (
               <div className="text-xs mono text-gray-700">
@@ -197,16 +238,47 @@
             )}
             {!pyodide && <Loader />}
           </div>
-          {example && (
-            <div className="mt-2">
+
+          {/* 引导提示（不完全正确，解锁后可展开） */}
+          {guide && (
+            <div className="mt-3 flex items-center gap-2">
               <button
-                onClick={() => setShowHint(s => !s)}
-                className="px-3 py-1 rounded-lg text-sm border bg-white hover:bg-gray-50"
+                onClick={() => setShowGuide(s => !s)}
+                className={
+                  "px-3 py-1 rounded-lg text-sm border " +
+                  (tries >= minTriesForGuide ? "bg-white hover:bg-gray-50" : "bg-gray-100 text-gray-400 cursor-not-allowed")
+                }
+                disabled={tries < minTriesForGuide}
+                title={tries < minTriesForGuide ? `Try ${minTriesForGuide - tries} more time(s) to unlock hint` : ""}
               >
-                {showHint ? "Hide hint" : "Show hint"}
+                {showGuide ? "Hide hint" : (tries >= minTriesForGuide ? "Show hint" : `Hint locked (${triesLeftForGuide} left)`)}
               </button>
-              {showHint && <Code>{example}</Code>}
             </div>
+          )}
+          {guide && showGuide && tries >= minTriesForGuide && (
+            <Code>{guide}</Code>
+          )}
+
+          {/* 最终答案/完全示例（到达更高阈值才解锁） */}
+          {finalSolution && (
+            <div className="mt-2 flex items-center gap-2">
+              <button
+                onClick={() => setShowSolution(s => !s)}
+                className={
+                  "px-3 py-1 rounded-lg text-sm " +
+                  (tries >= minTriesForSolution
+                    ? "bg-blue-600 text-white hover:bg-blue-700"
+                    : "border bg-gray-100 text-gray-400 cursor-not-allowed")
+                }
+                disabled={tries < minTriesForSolution}
+                title={tries < minTriesForSolution ? `Try ${minTriesForSolution - tries} more time(s) to unlock solution` : ""}
+              >
+                {showSolution ? "Hide solution" : (tries >= minTriesForSolution ? "Show solution" : `Solution locked (${triesLeftForSolution} left)`)}
+              </button>
+            </div>
+          )}
+          {finalSolution && showSolution && tries >= minTriesForSolution && (
+            <Code>{finalSolution}</Code>
           )}
         </Card>
       );
@@ -343,7 +415,7 @@
               id="q2"
               title="Quiz 2 · define several variables in a single line"
               prompt="Requirement: In one line, assign 1 to x and 2 to y."
-              example={`x, y = 1, 2`}
+              solution={`x, y = 1, 2`}
               check={({get, code}) => {
                 const x = get("x"), y = get("y");
                 const nonEmptyLines = code.split(/\r?\n/).filter(l => l.trim().length > 0);
@@ -358,7 +430,7 @@
               id="q3"
               title="Quiz 3 · convert a value to a different data type"
               prompt="Requirement: Convert the string '123' to an integer."
-              example={`a = '123'\nprint(type(a))\na = int('123')\nprint(type(a))`}
+              solution={`a = '123'\nprint(type(a))\na = int('123')\nprint(type(a))`}
               check={({glb, code}) => {
                 // 必须真的用到了 int('123') 或 int("123")
                 const usedCast = /(^|\W)int\s*\(\s*['"]123['"]\s*\)/.test(code);
@@ -386,7 +458,7 @@
               id="q4"
               title="Quiz 4 · check the data type of a value"
               prompt="Requirement: Print the data type of the value 3.14 using type()."
-              example={`a = 3.14\nprint(type(a))`}
+              solution={`a = 3.14\nprint(type(a))`}
               check={({out, code}) => {
                 const usedType = /type\s*\(/.test(code);
                 const printedFloat = /<class 'float'>/.test(out);
@@ -400,7 +472,7 @@
               id="q5"
               title="Quiz 5 · variable names are case-sensitive"
               prompt="Requirement: Create two different variables, named a and A, and assign them different values."
-              example={`a="string"\nA=9009\nprint(a)\nprint(A)`}
+              solution={`a="string"\nA=9009\nprint(a)\nprint(A)`}
               check={({get}) => {
                 const a = get("a");
                 const A = get("A");
@@ -414,7 +486,7 @@
               id="q6"
               title="Quiz 6 · global vs local variables"
               prompt="Requirement: Create a global variable named total, then inside a function create a local variable also named total with a different value, and print both values to show they are not the same."
-              example={`total = 8\ndef func():\n  total = 9\n  return total\nprint(func())\nprint(total)`}
+              solution={`total = 8\ndef func():\n  total = 9\n  return total\nprint(func())\nprint(total)`}
               check={({get, code, out}) => {
                 const hasGlobal = get("total") !== undefined;
                 const shadowAssigned = /def\s+\w+\s*\([\s\S]*?\):[\s\S]*?total\s*=/.test(code);

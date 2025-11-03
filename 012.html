@@ -123,35 +123,62 @@
     }
 
     // Generic quiz component
-    function PyQuiz({id, title, prompt, starter="", example, check}){
+    function PyQuiz({
+      id,
+      title,
+      prompt,
+      starter = "",
+      // 新增两个可选内容：引导提示（半对/引导思路）与最终答案
+      guide,                 // e.g. "提示思路/不完全代码"
+      solution,              // e.g. "完全正确的参考解"
+      example,               // 兼容老参数：当作 solution 用
+      // 解锁阈值（可按题目定制）
+      minTriesForGuide = 3,      // 尝试 ≥ 3 次才解锁引导提示
+      minTriesForSolution = 5,   // 尝试 ≥ 5 次才解锁最终答案
+      check
+    }) {
       const { pyodide, err } = usePyRunner();
-      const [code, setCode] = useState(starter);
-      const [status, setStatus] = useState({ ok: null, text: "Waiting for input" });
-      const [showHint, setShowHint] = useState(false);
+      const [code, setCode] = React.useState(starter);
+      const [status, setStatus] = React.useState({ ok: null, text: "Waiting for input" });
 
-      async function run(){
-        if(!pyodide){ setStatus({ok:null, text:"Python not ready"}); return; }
-        setStatus({ok:null, text:"Running..."});
-        try{
+      // 统计尝试次数（点击 Run 就 +1，不管对错；你也可以改成“错误时才 +1”）
+      const [tries, setTries] = React.useState(0);
+
+      // 控制展开
+      const [showGuide, setShowGuide] = React.useState(false);
+      const [showSolution, setShowSolution] = React.useState(false);
+
+      // 兼容：如果传了 example，但没传 solution，则把 example 当成 solution
+      const finalSolution = solution ?? example ?? null;
+
+      async function run() {
+        if (!pyodide) { setStatus({ ok: null, text: "Python not ready" }); return; }
+        setStatus({ ok: null, text: "Running..." });
+
+        // 每次点击都记一次尝试
+        setTries(t => t + 1);
+
+        try {
           const res = await runUser(pyodide, code);
           const glb = res.glb;
           const out = res.out;
           const err = res.err;
           const codeNorm = res.code;
+
           const get = (name) => {
             const pyv = glb.get(name);
             if (pyv === undefined || pyv === null) return undefined;
             return (typeof pyv.toJs === "function") ? pyv.toJs() : pyv;
           };
 
-          const qpass = await check({glb, out, err, code: codeNorm, get});
+          const qpass = await check({ glb, out, err, code: codeNorm, get });
 
-          // Snapshot variables
+          // 变量快照
           let snapshot = {};
           try {
             const ks = glb.keys();
             let names = (typeof ks.toJs === "function") ? ks.toJs() : [];
-            names = Array.from(names).filter(name => name !== '__builtins__');
+            names = Array.from(names).filter(n => n !== "__builtins__");
             for (const k of names) {
               const v = glb.get(k);
               snapshot[k] = (v && typeof v.toJs === "function") ? v.toJs() : v;
@@ -167,18 +194,30 @@
           });
 
           glb.destroy && glb.destroy();
-
-        }catch(e){
-          setStatus({ok:false, text:"Python error: " + e.message});
+        } catch (e) {
+          setStatus({ ok: false, text: "Python error: " + e.message });
         }
       }
+
+      // 还差多少次解锁
+      const triesLeftForGuide = Math.max(0, minTriesForGuide - tries);
+      const triesLeftForSolution = Math.max(0, minTriesForSolution - tries);
 
       return (
         <Card title={title}>
           <p>{prompt}</p>
-          <textarea className="w-full h-96 border rounded-xl p-3 mono" value={code} onChange={e=>setCode(e.target.value)} placeholder="Write Python here..." />
+
+          <textarea
+            className="w-full h-96 border rounded-xl p-3 mono"
+            value={code}
+            onChange={e => setCode(e.target.value)}
+            placeholder="Write Python here..."
+          />
+
           <div className="flex items-center gap-3">
-            <button onClick={run} className="px-4 py-2 rounded-xl bg-blue-600 text-white shadow">Run</button>
+            <button onClick={run} className="px-4 py-2 rounded-xl bg-blue-600 text-white shadow">
+              Run
+            </button>
             <Pill ok={status.ok} text={status.text} />
             {(status.lastOut || status.lastErr) && (
               <div className="text-xs mono text-gray-700">
@@ -193,16 +232,47 @@
             )}
             {!pyodide && <Loader />}
           </div>
-          {example && (
-            <div className="mt-2">
+
+          {/* 引导提示（不完全正确，解锁后可展开） */}
+          {guide && (
+            <div className="mt-3 flex items-center gap-2">
               <button
-                onClick={() => setShowHint(s => !s)}
-                className="px-3 py-1 rounded-lg text-sm border bg-white hover:bg-gray-50"
+                onClick={() => setShowGuide(s => !s)}
+                className={
+                  "px-3 py-1 rounded-lg text-sm border " +
+                  (tries >= minTriesForGuide ? "bg-white hover:bg-gray-50" : "bg-gray-100 text-gray-400 cursor-not-allowed")
+                }
+                disabled={tries < minTriesForGuide}
+                title={tries < minTriesForGuide ? `Try ${minTriesForGuide - tries} more time(s) to unlock hint` : ""}
               >
-                {showHint ? "Hide hint" : "Show hint"}
+                {showGuide ? "Hide hint" : (tries >= minTriesForGuide ? "Show hint" : `Hint locked (${triesLeftForGuide} left)`)}
               </button>
-              {showHint && <Code>{example}</Code>}
             </div>
+          )}
+          {guide && showGuide && tries >= minTriesForGuide && (
+            <Code>{guide}</Code>
+          )}
+
+          {/* 最终答案/完全示例（到达更高阈值才解锁） */}
+          {finalSolution && (
+            <div className="mt-2 flex items-center gap-2">
+              <button
+                onClick={() => setShowSolution(s => !s)}
+                className={
+                  "px-3 py-1 rounded-lg text-sm " +
+                  (tries >= minTriesForSolution
+                    ? "bg-blue-600 text-white hover:bg-blue-700"
+                    : "border bg-gray-100 text-gray-400 cursor-not-allowed")
+                }
+                disabled={tries < minTriesForSolution}
+                title={tries < minTriesForSolution ? `Try ${minTriesForSolution - tries} more time(s) to unlock solution` : ""}
+              >
+                {showSolution ? "Hide solution" : (tries >= minTriesForSolution ? "Show solution" : `Solution locked (${triesLeftForSolution} left)`)}
+              </button>
+            </div>
+          )}
+          {finalSolution && showSolution && tries >= minTriesForSolution && (
+            <Code>{finalSolution}</Code>
           )}
         </Card>
       );
@@ -267,7 +337,8 @@
               id="q1"
               title="Q1 · basic if"
               prompt='Set ok = False. If 2 < 5: set ok = True. Pass if ok is True; code must contain "if 2 < 5:".'
-              example={`ok = False\nif 2 < 5:\n    ok = True`}
+              guide={`ok = False\nif 2 < 1:\n    ok = True`}
+              solution={`ok = False\nif 2 < 5:\n    ok = True`}
               check={({get, code}) => {
                 const ok = get("ok");
                 const used = /if\s+2\s*<\s*5\s*:/.test(code);
@@ -281,7 +352,8 @@
               id="q2"
               title="Q2 · if/else"
               prompt='Let n = 3. If n >= 0: sign = "nonnegative" else: sign = "negative". Pass if sign == "nonnegative" and code uses else:'
-              example={`n = 3\nif n >= 0:\n    sign = "nonnegative"\nelse:\n    sign = "negative"`}
+              guide={`n = 5\nif n >= 0:\n    sign = "nonnegative"\nelse:\n    sign = "negative"`}
+              solution={`n = 3\nif n >= 0:\n    sign = "nonnegative"\nelse:\n    sign = "negative"`}
               check={({get, code}) => {
                 const sign = get("sign");
                 const hasElse = /\belse\s*:/.test(code);
@@ -295,7 +367,8 @@
               id="q3"
               title="Q3 · elif chain (grading)"
               prompt='Let score = 85. Use if/elif/else to set grade: A for >=90, B for >=80, C for >=70, else F. Pass if grade == "B" and code uses elif.'
-              example={`score = 85\nif score >= 90:\n    grade = "A"\nelif score >= 80:\n    grade = "B"\nelif score >= 70:\n    grade = "C"\nelse:\n    grade = "F"`}
+              guide={`score = 81\nif score >= 90:\n    grade = "A"\nelif score >= 80:\n    grade = "B"\nelif score >= 70:\n    grade = "C"\nelse:\n    grade = "F"`}
+              solution={`score = 85\nif score >= 90:\n    grade = "A"\nelif score >= 80:\n    grade = "B"\nelif score >= 70:\n    grade = "C"\nelse:\n    grade = "F"`}
               check={({get, code}) => {
                 const grade = get("grade");
                 const hasElif = /\belif\b/.test(code);
@@ -309,7 +382,8 @@
               id="q4"
               title="Q4 · truthiness (empty vs non-empty)"
               prompt='Let xs = []. If xs: label = "nonempty" else: label = "empty". Pass if label == "empty" and code tests the variable directly (uses "if xs").'
-              example={`xs = []\nif xs:\n    label = "nonempty"\nelse:\n    label = "empty"`}
+              guide={`xs = []\nif xs:\n    label = "empty"\nelse:\n    label = "nonempty"`}
+              solution={`xs = []\nif xs:\n    label = "nonempty"\nelse:\n    label = "empty"`}
               check={({get, code}) => {
                 const label = get("label");
                 const direct = /if\s+xs\s*:/.test(code);
@@ -323,7 +397,8 @@
               id="q5"
               title="Q5 · combine conditions (and/or/not)"
               prompt='Let age = 20; has_id = True. If age >= 18 and has_id: result = "ok" else: result = "deny". Pass if result == "ok".'
-              example={`age = 20\nhas_id = True\nif age >= 18 and has_id:\n    result = "ok"\nelse:\n    result = "deny"`}
+              guide={`age = 25\nhas_id = True\nif age >= 26 and has_id:\n    result = "ok"\nelse:\n    result = "deny"`}
+              solution={`age = 20\nhas_id = True\nif age >= 18 and has_id:\n    result = "ok"\nelse:\n    result = "deny"`}
               check={({get, code}) => {
                 const result = get("result");
                 const usedAnd = /\band\b/.test(code);
@@ -337,7 +412,8 @@
               id="q6"
               title="Q6 · nested if (leap year)"
               prompt='Let y = 2000. Set leap = True for leap years (divisible by 400, or divisible by 4 and not by 100) else False. Use nested ifs. Pass if leap is True.'
-              example={`y = 2000\nleap = False\nif y % 4 == 0:\n    if y % 100 == 0:\n        if y % 400 == 0:\n            leap = True\n        else:\n            leap = False\n    else:\n        leap = True\nelse:\n    leap = False`}
+              guide={`y = 2004\nleap = False\nif y % 4 == 0:\n    if y % 100 == 0:\n        if y % 400 == 0:\n            leap = True\n        else:\n            leap = False\n    else:\n        leap = True\nelse:\n    leap = False`}
+              solution={`y = 2000\nleap = False\nif y % 4 == 0:\n    if y % 100 == 0:\n        if y % 400 == 0:\n            leap = True\n        else:\n            leap = False\n    else:\n        leap = True\nelse:\n    leap = False`}
               check={({get, code}) => {
                 const leap = get("leap");
                 const hasIfs = (code.match(/\bif\b/g)||[]).length >= 2;
@@ -351,7 +427,8 @@
               id="q7"
               title="Q7 · conditional expression (ternary)"
               prompt='Let n = 7. Make label = "even" if n%2==0 else "odd". Pass if label == "odd"; code must use the inline if-expression.'
-              example={`n = 7\nlabel = "even" if n%2==0 else "odd"`}
+              guide={`n = 9\nlabel = "even" if n%3==0 else "odd"`}
+              solution={`n = 7\nlabel = "even" if n%2==0 else "odd"`}
               check={({get, code}) => {
                 const label = get("label");
                 const usedInline = /\bif\b.*\belse\b/.test(code);
@@ -365,7 +442,8 @@
               id="q8"
               title="Q8 · guard against division by zero"
               prompt='Write these 3 lines first: a = 10, b = 0, result = None. Then use if/else. If b == 0 keep result = None, else set result = a/b.'
-              example={`a = 10\nb = 0\nresult = None\nif b == 0:\n    result = None\nelse:\n    result = a/b`}
+              guide={`a = 12\nb = 1\nresult = None\nif b != 0:\n    result = None\nelse:\n    result = a/b`}
+              solution={`a = 10\nb = 0\nresult = None\nif b == 0:\n    result = None\nelse:\n    result = a/b`}
               check={({code, err}) => {
                 // Do not depend on runtime globals; validate structure instead.
                 const hasInit =
@@ -386,7 +464,8 @@
               id="q9"
               title="Q9 · max of three via if/else"
               prompt='Let a=3, b=9, c=5. Use only if/elif/else to compute m = the maximum of a,b,c. Pass if m == 9 and you used at least two if/elif.'
-              example={`a=3; b=9; c=5\nif a >= b and a >= c:\n    m = a\nelif b >= a and b >= c:\n    m = b\nelse:\n    m = c`}
+              guide={`a=5; b=3; c=7\nif a >= b and a >= c:\n    m = a\nelif b >= a and b >= c:\n    m = b\nelse:\n    m = c`}
+              solution={`a=3; b=9; c=5\nif a >= b and a >= c:\n    m = a\nelif b >= a and b >= c:\n    m = b\nelse:\n    m = c`}
               check={({get, code}) => {
                 const m = get("m");
                 const cnt = (code.match(/\bif\b/g)||[]).length + (code.match(/\belif\b/g)||[]).length;

@@ -124,35 +124,62 @@
     }
 
     // Generic quiz component
-    function PyQuiz({id, title, prompt, starter="", example, check}){
+    function PyQuiz({
+      id,
+      title,
+      prompt,
+      starter = "",
+      // 新增两个可选内容：引导提示（半对/引导思路）与最终答案
+      guide,                 // e.g. "提示思路/不完全代码"
+      solution,              // e.g. "完全正确的参考解"
+      example,               // 兼容老参数：当作 solution 用
+      // 解锁阈值（可按题目定制）
+      minTriesForGuide = 3,      // 尝试 ≥ 3 次才解锁引导提示
+      minTriesForSolution = 5,   // 尝试 ≥ 5 次才解锁最终答案
+      check
+    }) {
       const { pyodide, err } = usePyRunner();
-      const [code, setCode] = useState(starter);
-      const [status, setStatus] = useState({ ok: null, text: "Waiting for input" });
-      const [showHint, setShowHint] = useState(false);
+      const [code, setCode] = React.useState(starter);
+      const [status, setStatus] = React.useState({ ok: null, text: "Waiting for input" });
 
-      async function run(){
-        if(!pyodide){ setStatus({ok:null, text:"Python not ready"}); return; }
-        setStatus({ok:null, text:"Running..."});
-        try{
+      // 统计尝试次数（点击 Run 就 +1，不管对错；你也可以改成“错误时才 +1”）
+      const [tries, setTries] = React.useState(0);
+
+      // 控制展开
+      const [showGuide, setShowGuide] = React.useState(false);
+      const [showSolution, setShowSolution] = React.useState(false);
+
+      // 兼容：如果传了 example，但没传 solution，则把 example 当成 solution
+      const finalSolution = solution ?? example ?? null;
+
+      async function run() {
+        if (!pyodide) { setStatus({ ok: null, text: "Python not ready" }); return; }
+        setStatus({ ok: null, text: "Running..." });
+
+        // 每次点击都记一次尝试
+        setTries(t => t + 1);
+
+        try {
           const res = await runUser(pyodide, code);
           const glb = res.glb;
           const out = res.out;
           const err = res.err;
           const codeNorm = res.code;
+
           const get = (name) => {
             const pyv = glb.get(name);
             if (pyv === undefined || pyv === null) return undefined;
             return (typeof pyv.toJs === "function") ? pyv.toJs() : pyv;
           };
 
-          const qpass = await check({glb, out, err, code: codeNorm, get});
+          const qpass = await check({ glb, out, err, code: codeNorm, get });
 
-          // Snapshot variables
+          // 变量快照
           let snapshot = {};
           try {
             const ks = glb.keys();
             let names = (typeof ks.toJs === "function") ? ks.toJs() : [];
-            names = Array.from(names).filter(name => name !== '__builtins__');
+            names = Array.from(names).filter(n => n !== "__builtins__");
             for (const k of names) {
               const v = glb.get(k);
               snapshot[k] = (v && typeof v.toJs === "function") ? v.toJs() : v;
@@ -168,18 +195,30 @@
           });
 
           glb.destroy && glb.destroy();
-
-        }catch(e){
-          setStatus({ok:false, text:"Python error: " + e.message});
+        } catch (e) {
+          setStatus({ ok: false, text: "Python error: " + e.message });
         }
       }
+
+      // 还差多少次解锁
+      const triesLeftForGuide = Math.max(0, minTriesForGuide - tries);
+      const triesLeftForSolution = Math.max(0, minTriesForSolution - tries);
 
       return (
         <Card title={title}>
           <p>{prompt}</p>
-          <textarea className="w-full h-28 border rounded-xl p-3 mono" value={code} onChange={e=>setCode(e.target.value)} placeholder="Write Python here..." />
+
+          <textarea
+            className="w-full h-96 border rounded-xl p-3 mono"
+            value={code}
+            onChange={e => setCode(e.target.value)}
+            placeholder="Write Python here..."
+          />
+
           <div className="flex items-center gap-3">
-            <button onClick={run} className="px-4 py-2 rounded-xl bg-blue-600 text-white shadow">Run</button>
+            <button onClick={run} className="px-4 py-2 rounded-xl bg-blue-600 text-white shadow">
+              Run
+            </button>
             <Pill ok={status.ok} text={status.text} />
             {(status.lastOut || status.lastErr) && (
               <div className="text-xs mono text-gray-700">
@@ -194,16 +233,47 @@
             )}
             {!pyodide && <Loader />}
           </div>
-          {example && (
-            <div className="mt-2">
+
+          {/* 引导提示（不完全正确，解锁后可展开） */}
+          {guide && (
+            <div className="mt-3 flex items-center gap-2">
               <button
-                onClick={() => setShowHint(s => !s)}
-                className="px-3 py-1 rounded-lg text-sm border bg-white hover:bg-gray-50"
+                onClick={() => setShowGuide(s => !s)}
+                className={
+                  "px-3 py-1 rounded-lg text-sm border " +
+                  (tries >= minTriesForGuide ? "bg-white hover:bg-gray-50" : "bg-gray-100 text-gray-400 cursor-not-allowed")
+                }
+                disabled={tries < minTriesForGuide}
+                title={tries < minTriesForGuide ? `Try ${minTriesForGuide - tries} more time(s) to unlock hint` : ""}
               >
-                {showHint ? "Hide hint" : "Show hint"}
+                {showGuide ? "Hide hint" : (tries >= minTriesForGuide ? "Show hint" : `Hint locked (${triesLeftForGuide} left)`)}
               </button>
-              {showHint && <Code>{example}</Code>}
             </div>
+          )}
+          {guide && showGuide && tries >= minTriesForGuide && (
+            <Code>{guide}</Code>
+          )}
+
+          {/* 最终答案/完全示例（到达更高阈值才解锁） */}
+          {finalSolution && (
+            <div className="mt-2 flex items-center gap-2">
+              <button
+                onClick={() => setShowSolution(s => !s)}
+                className={
+                  "px-3 py-1 rounded-lg text-sm " +
+                  (tries >= minTriesForSolution
+                    ? "bg-blue-600 text-white hover:bg-blue-700"
+                    : "border bg-gray-100 text-gray-400 cursor-not-allowed")
+                }
+                disabled={tries < minTriesForSolution}
+                title={tries < minTriesForSolution ? `Try ${minTriesForSolution - tries} more time(s) to unlock solution` : ""}
+              >
+                {showSolution ? "Hide solution" : (tries >= minTriesForSolution ? "Show solution" : `Solution locked (${triesLeftForSolution} left)`)}
+              </button>
+            </div>
+          )}
+          {finalSolution && showSolution && tries >= minTriesForSolution && (
+            <Code>{finalSolution}</Code>
           )}
         </Card>
       );
@@ -268,7 +338,7 @@
               id="q1"
               title="Q1 · make an empty tuple"
               prompt='Create t = (). Pass if t is a tuple (Pyodide shows it as a JS array) and len(t) == 0 and your code uses the literal ().'
-              example={`t = ()`}
+              solution={`t = ()`}
               check={({get, code}) => {
                 const t = get("t");
                 const usedLiteral = /(^|\n)\s*t\s*=\s*\(\)/.test(code);
@@ -282,7 +352,7 @@
               id="q2"
               title="Q2 · single-element tuple"
               prompt='Create one = (1,) with a trailing comma. Pass if it behaves like a 1-length tuple (Pyodide shows it as [1]) and code includes "(1,)".'
-              example={`one = (1,)`}
+              solution={`one = (1,)`}
               check={({get, code}) => {
                 const one = get("one");
                 const used = /\(1,\)/.test(code);
@@ -296,7 +366,7 @@
               id="q3"
               title="Q3 · indexing and negative index"
               prompt='Use a = (10, 20, 30); create second = a[1] and last = a[-1]. Pass if second == 20 and last == 30, and code contains [1] and [-1].'
-              example={`a = (10, 20, 30)\nsecond = a[1]\nlast = a[-1]`}
+              solution={`a = (10, 20, 30)\nsecond = a[1]\nlast = a[-1]`}
               check={({get, code}) => {
                 const second = get("second");
                 const last = get("last");
@@ -312,7 +382,7 @@
               id="q4"
               title="Q4 · slicing returns a tuple"
               prompt='Use b = (0,1,2,3,4); create mid = b[1:4]. Pass if mid == (1,2,3) and your slice uses a colon.'
-              example={`b = (0,1,2,3,4)\nmid = b[1:4]`}
+              solution={`b = (0,1,2,3,4)\nmid = b[1:4]`}
               check={({get, code}) => {
                 const mid = get("mid");
                 const hasColon = /:\s*\d?/.test(code) || /\[\d+\s*:\s*\d+\]/.test(code);
@@ -326,7 +396,7 @@
               id="q5"
               title="Q5 · tuple unpacking"
               prompt='Create t = (3, 4); then do x, y = t. Pass if x == 3 and y == 4 and code uses a comma on the left side.'
-              example={`t = (3, 4)\nx, y = t`}
+              solution={`t = (3, 4)\nx, y = t`}
               check={({get, code}) => {
                 const x = get("x"); const y = get("y");
                 const usedCommaLeft = /x\s*,\s*y\s*=/.test(code);
@@ -340,7 +410,7 @@
               id="q6"
               title="Q6 · immutability check (TypeError)"
               prompt='Start with t = (1,2). In a try/except block, attempt t[0] = 9, set imm = True inside except TypeError. Pass if imm is True.'
-              example={`t = (1,2)\nimm = False\ntry:\n    t[0] = 9\nexcept TypeError:\n    imm = True`}
+              solution={`t = (1,2)\nimm = False\ntry:\n    t[0] = 9\nexcept TypeError:\n    imm = True`}
               check={({get, code}) => {
                 const imm = get("imm");
                 const usedTry = /\btry\s*:/.test(code);
@@ -355,7 +425,7 @@
               id="q7"
               title="Q7 · tuple as dict key"
               prompt='Create key = ("x", 1); d = {key: "ok"}; val = d[("x",1)]. Pass if val == "ok".'
-              example={`key = ("x", 1)\nd = {key: "ok"}\nval = d[("x",1)]`}
+              solution={`key = ("x", 1)\nd = {key: "ok"}\nval = d[("x",1)]`}
               check={({get}) => {
                 const val = get("val");
                 const ok = val === "ok";
@@ -368,7 +438,7 @@
               id="q8"
               title="Q8 · tuple methods count and index"
               prompt='Use t = (1,2,2,3). Create c = t.count(2) and i = t.index(3). Pass if c == 2 and i == 3 and code uses .count( and .index('
-              example={`t = (1,2,2,3)\nc = t.count(2)\ni = t.index(3)`}
+              solution={`t = (1,2,2,3)\nc = t.count(2)\ni = t.index(3)`}
               check={({get, code}) => {
                 const c = get("c"); const i = get("i");
                 const hasCount = /.count\(/.test(code);
@@ -383,7 +453,7 @@
               id="q9"
               title="Q9 · mutable item inside a tuple"
               prompt='Make t = ([1,2], 99). Then append 3 to the inner list. Pass if t == ([1,2,3], 99) and code uses .append('
-              example={`t = ([1,2], 99)\nt[0].append(3)`}
+              solution={`t = ([1,2], 99)\nt[0].append(3)`}
               check={({get, code}) => {
                 const t = get("t");
                 const usedAppend = /.append\(/.test(code);
