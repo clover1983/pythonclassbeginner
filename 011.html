@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Python Class 11 · Math & Operators (Hands-on)</title>
+  <title>Python Class 11 · Operators</title>
   <!-- Tailwind (CDN) -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- React 18 UMD + ReactDOM UMD (development builds) -->
@@ -113,14 +113,42 @@
 
     function Intro(){
       return (
-        <Card title="Class 11: math module & common operators — numbers done right">
+        <Card title="Class 11: Comparisons · Logic · Identity · Membership · Bitwise">
+          <p>Goal: Master Python's decision and testing operators, including chained comparisons and bitwise tricks.</p>
           <ul className="list-disc ml-6 space-y-1">
-            <li>Import once: <span className="mono">import math</span>. Constants: <span className="mono">math.pi</span>, <span className="mono">math.e</span>.</li>
-            <li>Popular functions: <span className="mono">sqrt</span>, <span className="mono">floor</span>, <span className="mono">ceil</span>, <span className="mono">fabs</span>, <span className="mono">factorial</span>, <span className="mono">pow</span>, <span className="mono">log</span>, <span className="mono">log10</span>, <span className="mono">sin</span>, <span className="mono">cos</span>, <span className="mono">radians</span>.</li>
-            <li>Arithmetic: <span className="mono">+</span>, <span className="mono">-</span>, <span className="mono">*</span>, <span className="mono">/</span>, <span className="mono">//</span>, <span className="mono">%</span>, <span className="mono">**</span>.</li>
-            <li>Comparisons: <span className="mono">==</span>, <span className="mono">!=</span>, <span className="mono">&lt;</span>, <span className="mono">&lt;=</span>, <span className="mono">&gt;</span>, <span className="mono">&gt;=</span>.</li>
-            <li>Logic: <span className="mono">and</span>, <span className="mono">or</span>, <span className="mono">not</span>. Membership: <span className="mono">in</span>, <span className="mono">not in</span>. Identity: <span className="mono">is</span>, <span className="mono">is not</span>.</li>
-            <li>Bitwise: <span className="mono">&</span>, <span className="mono">|</span>, <span className="mono">^</span>, <span className="mono">~</span>, <span className="mono">&laquo;</span>, <span className="mono">&raquo;</span>.</li>
+            {/* previously learned (Class 2) */}
+            <li>
+              <b>Arithmetic Operators</b> (already learned in Class 2):
+              <span className="mono"> +</span>, <span className="mono"> -</span>, <span className="mono"> *</span>,
+              <span className="mono"> /</span>, <span className="mono"> //</span>, <span className="mono"> %</span>,
+              <span className="mono"> **</span>.
+            </li>
+            <li>
+              <b>Assignment Operators</b> (already learned in Class 2):
+              <span className="mono"> =</span>, <span className="mono"> +=</span>, <span className="mono"> -=</span>,
+              <span className="mono"> *=</span>, <span className="mono"> /=</span>, <span className="mono"> %=</span>,
+              <span className="mono"> //=</span>, <span className="mono"> **=</span>.
+            </li>
+
+            {/* this class focus */}
+            <li>
+              <b>Comparison</b>: <span className="mono">==</span>, <span className="mono">!=</span>, <span className="mono">&lt;</span>, <span className="mono">&gt;</span>, <span className="mono">&lt;=</span>, <span className="mono">&gt;=</span>.
+            </li>
+            <li>
+              <b>Chaining</b>: <span className="mono">1 &lt; x &lt; 10</span> is equivalent to <span className="mono">(1 &lt; x) and (x &lt; 10)</span> but evaluated in one pass.
+            </li>
+            <li>
+              <b>Logical</b>: <span className="mono">and</span>, <span className="mono">or</span>, <span className="mono">not</span> combine booleans; use parentheses to control precedence.
+            </li>
+            <li>
+              <b>Identity</b>: <span className="mono">is</span>, <span className="mono">is not</span> compare object identity (same object), not values.
+            </li>
+            <li>
+              <b>Membership</b>: <span className="mono">in</span>, <span className="mono">not in</span> test containment for strings, lists, sets, etc.
+            </li>
+            <li>
+              <b>Bitwise (integers)</b>: <span className="mono">&amp;</span>, <span className="mono">|</span>, <span className="mono">^</span>, <span className="mono">~</span>, <span className="mono">&lt;&lt;</span>, <span className="mono">&gt;&gt;</span> operate on the binary representation.
+            </li>
           </ul>
         </Card>
       );
@@ -179,7 +207,7 @@
       return (
         <Card title={title}>
           <p>{prompt}</p>
-          <textarea className="w-full h-96 border rounded-xl p-3 mono" value={code} onChange={e=>setCode(e.target.value)} placeholder={example || "Write Python here..."} />
+          <textarea className="w-full h-28 border rounded-xl p-3 mono" value={code} onChange={e=>setCode(e.target.value)} placeholder={example || "Write Python here..."} />
           <div className="flex items-center gap-3">
             <button onClick={run} className="px-4 py-2 rounded-xl bg-blue-600 text-white shadow">Run</button>
             <Pill ok={status.ok} text={status.text} />
@@ -210,13 +238,13 @@
           setScore(s => s + 1);
         }
       }
-      const total = 9;
+      const total = 20;
       const progress = Math.round(Object.keys(done).length/total*100);
 
       return (
         <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100">
           <header className="max-w-5xl mx-auto px-6 py-8">
-            <h1 className="text-3xl font-bold tracking-tight">Python Class 11 · Math & Operators (Hands-on)</h1>
+            <h1 className="text-3xl font-bold tracking-tight">Python Class 11 · Operators</h1>
             <p className="text-gray-600 mt-1">Complete {total} quizzes. Real Python runs in your browser.</p>
           </header>
 
@@ -233,152 +261,312 @@
 
             <Intro />
 
+            {/* Q1–Q5: Comparison operators */}
             <PyQuiz
               id="q1"
-              title="Q1 · import math and sqrt"
-              prompt='Import math and compute x = math.sqrt(81). Pass if x == 9; code must use import math and math.sqrt('
-              example={`import math\nx = math.sqrt(81)`}
+              title="Q1 · equality =="
+              prompt='Set a=10, b=10, ok = (a == b). Pass if ok is True and code uses "==".'
+              example={`a = 10\nb = 10\nok = (a == b)`}
               check={({get, code}) => {
-                const x = get("x");
-                const usedImport = /(^|\n)\s*import\s+math\b/.test(code);
-                const usedSqrt = /math\.sqrt\(/.test(code);
-                const ok = usedImport && usedSqrt && x === 9;
-                if (ok) onPass("q1");
-                return ok;
+                const ok = get("ok");
+                const used = /==/.test(code);
+                const pass = used && ok === true;
+                if (pass) onPass("q1");
+                return pass;
               }}
             />
 
             <PyQuiz
               id="q2"
-              title="Q2 · floor and ceil"
-              prompt='Make a = math.floor(3.7) and b = math.ceil(3.1). Pass if a==3 and b==4; code must use math.floor and math.ceil.'
-              example={`import math\na = math.floor(3.7)\nb = math.ceil(3.1)`}
+              title="Q2 · not equal !="
+              prompt='Set a=7, b=3, ok = (a != b). Pass if ok is True and code uses "!=".'
+              example={`a = 7\nb = 3\nok = (a != b)`}
               check={({get, code}) => {
-                const a = get("a"); const b = get("b");
-                const usedFloor = /math\.floor\(/.test(code);
-                const usedCeil = /math\.ceil\(/.test(code);
-                const ok = usedFloor && usedCeil && a === 3 && b === 4;
-                if (ok) onPass("q2");
-                return ok;
+                const ok = get("ok");
+                const used = /!=/.test(code);
+                const pass = used && ok === true;
+                if (pass) onPass("q2");
+                return pass;
               }}
             />
 
             <PyQuiz
               id="q3"
-              title="Q3 · pi and area"
-              prompt='Use r = 2; area = math.pi * (r ** 2). Pass if area ≈ 12.56637; code must use math.pi and **.'
-              example={`import math\nr = 2\narea = math.pi * (r ** 2)`}
+              title="Q3 · greater-than >"
+              prompt='Make a=5, b=2, res = (a > b). Pass if res is True and code uses ">".'
+              example={`a = 5\nb = 2\nres = (a > b)`}
               check={({get, code}) => {
-                const area = get("area");
-                const usedPi = /math\.pi/.test(code);
-                const usedPow = /\*\*/.test(code);
-                const ok = usedPi && usedPow && approx(area, 12.566370614359172);
-                if (ok) onPass("q3");
-                return ok;
+                const res = get("res");
+                const used = />/.test(code);
+                const pass = used && res === true;
+                if (pass) onPass("q3");
+                return pass;
               }}
             />
 
             <PyQuiz
               id="q4"
-              title="Q4 · radians and sin"
-              prompt='Use ang_deg = 30; ang_rad = math.radians(ang_deg); s = math.sin(ang_rad). Pass if s ≈ 0.5 and code uses math.radians('
-              example={`import math\nang_deg = 30\nang_rad = math.radians(ang_deg)\ns = math.sin(ang_rad)`}
+              title="Q4 · less-or-equal <="
+              prompt='Make a=3, b=3, res = (a <= b). Pass if res is True and code uses "<=".'
+              example={`a = 3\nb = 3\nres = (a <= b)`}
               check={({get, code}) => {
-                const s = get("s");
-                const usedRad = /math\.radians\(/.test(code);
-                const ok = usedRad && approx(s, 0.5);
-                if (ok) onPass("q4");
-                return ok;
+                const res = get("res");
+                const used = /<=/.test(code);
+                const pass = used && res === true;
+                if (pass) onPass("q4");
+                return pass;
               }}
             />
 
             <PyQuiz
               id="q5"
-              title="Q5 · log and log10"
-              prompt='Make a = math.log(math.e) and b = math.log10(100). Pass if a ≈ 1.0 and b == 2; code must use math.log and math.log10.'
-              example={`import math\na = math.log(math.e)\nb = math.log10(100)`}
+              title="Q5 · greater-or-equal >="
+              prompt='Make a=10, b=7, res = (a >= b). Pass if res is True and code uses ">=".'
+              example={`a = 10\nb = 7\nres = (a >= b)`}
               check={({get, code}) => {
-                const a = get("a"); const b = get("b");
-                const usedLog = /math\.log\(/.test(code);
-                const usedLog10 = /math\.log10\(/.test(code);
-                const ok = usedLog && usedLog10 && approx(a, 1.0) && b === 2;
-                if (ok) onPass("q5");
-                return ok;
+                const res = get("res");
+                const used = />=/.test(code);
+                const pass = used && res === true;
+                if (pass) onPass("q5");
+                return pass;
               }}
             />
 
+            {/* Q6–Q7: Chained comparisons */}
             <PyQuiz
               id="q6"
-              title="Q6 · //, % and **"
-              prompt='Let x = 7//3, y = 7%3, z = 2**5. Pass if x==2, y==1, z==32; code must use //, %, and **.'
-              example={`x = 7//3\ny = 7%3\nz = 2**5`}
+              title="Q6 · chained comparison"
+              prompt='Let x=7; is_between = 1 < x < 10. Pass if True and code uses the chained form "1 < x < 10".'
+              example={`x = 7\nis_between = 1 < x < 10`}
               check={({get, code}) => {
-                const x = get("x"); const y = get("y"); const z = get("z");
-                const usedFloor = /\/\//.test(code);
-                const usedMod = /%/.test(code);
-                const usedPow = /\*\*/.test(code);
-                const ok = usedFloor && usedMod && usedPow && x===2 && y===1 && z===32;
-                if (ok) onPass("q6");
-                return ok;
+                const v = get("is_between");
+                const used = /1\s*<\s*x\s*<\s*10/.test(code);
+                const pass = used && v === true;
+                if (pass) onPass("q6");
+                return pass;
               }}
             />
 
             <PyQuiz
               id="q7"
-              title="Q7 · comparisons and logic"
-              prompt='Use a = 5, b = 8; set ok = (a < b) and (b != a) and (b >= 8). Pass if ok is True; code must use and.'
-              example={`a = 5\nb = 8\nok = (a < b) and (b != a) and (b >= 8)`}
+              title="Q7 · chained comparison (expanded)"
+              prompt='Let x=7; left = (1 < x) and (x < 10). Pass if left is True and code uses "and".'
+              example={`x = 7\nleft = (1 < x) and (x < 10)`}
               check={({get, code}) => {
-                const okv = get("ok");
-                const usedAnd = /\band\b/.test(code);
-                const ok = usedAnd && okv === true;
-                if (ok) onPass("q7");
-                return ok;
+                const v = get("left");
+                const used = /\band\b/.test(code);
+                const pass = used && v === true;
+                if (pass) onPass("q7");
+                return pass;
               }}
             />
 
+            {/* Q8–Q10: Logical operators */}
             <PyQuiz
               id="q8"
-              title="Q8 · membership and identity"
-              prompt='Let s = "hello"; cond = ("e" in s) and ("x" not in s). Also do lst=[1,2]; c=lst; same = (c is lst). Pass if cond is True and same is True.'
-              example={`s = "hello"\ncond = ("e" in s) and ("x" not in s)\nlst = [1,2]\nc = lst\nsame = (c is lst)`}
+              title="Q8 · and + not"
+              prompt='Let a=True, b=False; c = a and not b. Pass if c is True and code uses "and" and "not".'
+              example={`a = True\nb = False\nc = a and not b`}
               check={({get, code}) => {
-                const cond = get("cond"); const same = get("same");
-                const usedIn = /\bin\b/.test(code);
-                const usedIs = /\bis\b/.test(code);
-                const ok = usedIn && usedIs && cond === true && same === true;
-                if (ok) onPass("q8");
-                return ok;
+                const c = get("c");
+                const used = /\band\b/.test(code) && /\bnot\b/.test(code);
+                const pass = used && c === true;
+                if (pass) onPass("q8");
+                return pass;
               }}
             />
 
             <PyQuiz
               id="q9"
-              title="Q9 · bitwise ops and shifts"
-              prompt='Use a = 6 and b = 3. Set bw_and = a & b, bw_or = a | b, bw_xor = a ^ b, l = a << 1, r = a >> 1. Pass if bw_and==2, bw_or==7, bw_xor==5, l==12, r==3; code must use &, |, ^, <<, >>.'
-              example={`a = 6\nb = 3\nbw_and = a & b\nbw_or = a | b\nbw_xor = a ^ b\nl = a << 1\nr = a >> 1`}
+              title="Q9 · or"
+              prompt='Let a=False, b=False; c = a or (not b). Pass if c is True and code uses "or".'
+              example={`a = False\nb = False\nc = a or (not b)`}
               check={({get, code}) => {
-                const andv = get("bw_and"); const orv = get("bw_or"); const xorv = get("bw_xor");
-                const l = get("l"); const r = get("r");
-                const usedAnd = /&/.test(code);
-                const usedOr = /\|/.test(code);
-                const usedXor = /\^/.test(code);
-                const usedShL = /<</.test(code);
-                const usedShR = />>/.test(code);
-                const ok = usedAnd && usedOr && usedXor && usedShL && usedShR &&
-                  andv===2 && orv===7 && xorv===5 && l===12 && r===3;
-                if (ok) onPass("q9");
-                return ok;
+                const c = get("c");
+                const used = /\bor\b/.test(code);
+                const pass = used && c === true;
+                if (pass) onPass("q9");
+                return pass;
               }}
             />
 
-            <Card title="Recap & Tips" footer="Use math for precise numeric work; choose the right operator for the job. Prefer radians for trig (use math.radians), and beware floating-point equality — compare within a small tolerance.">
+            <PyQuiz
+              id="q10"
+              title="Q10 · precedence with parentheses"
+              prompt='Set res = (1 < 2) and (3 < 4 or 5 < 1). Pass if res is True and code uses both "and" and "or".'
+              example={`res = (1 < 2) and (3 < 4 or 5 < 1)`}
+              check={({get, code}) => {
+                const res = get("res");
+                const used = /\band\b/.test(code) && /\bor\b/.test(code);
+                const pass = used && res === true;
+                if (pass) onPass("q10");
+                return pass;
+              }}
+            />
+
+            {/* Q11–Q12: Identity operators */}
+            <PyQuiz
+              id="q11"
+              title="Q11 · identity: is"
+              prompt='Let lst=[1,2]; c = lst; same = (c is lst). Pass if same is True and code uses "is".'
+              example={`lst = [1,2]\nc = lst\nsame = (c is lst)`}
+              check={({get, code}) => {
+                const same = get("same");
+                const used = /\bis\b/.test(code);
+                const pass = used && same === true;
+                if (pass) onPass("q11");
+                return pass;
+              }}
+            />
+
+            <PyQuiz
+              id="q12"
+              title="Q12 · identity: is not"
+              prompt='Let a=[1,2]; b=[1,2]; diff = (a is not b). Pass if diff is True and code uses "is not".'
+              example={`a = [1,2]\nb = [1,2]\ndiff = (a is not b)`}
+              check={({get, code}) => {
+                const diff = get("diff");
+                const used = /\bis\s+not\b/.test(code);
+                const pass = used && diff === true;
+                if (pass) onPass("q12");
+                return pass;
+              }}
+            />
+
+            {/* Q13–Q14: Membership */}
+            <PyQuiz
+              id="q13"
+              title="Q13 · membership: in (string)"
+              prompt='Let s="banana"; has = "an" in s. Pass if has is True and code uses "in".'
+              example={`s = "banana"\nhas = "an" in s`}
+              check={({get, code}) => {
+                const has = get("has");
+                const used = /\bin\b/.test(code);
+                const pass = used && has === true;
+                if (pass) onPass("q13");
+                return pass;
+              }}
+            />
+
+            <PyQuiz
+              id="q14"
+              title="Q14 · membership: not in (list)"
+              prompt='Let items=[1,2,3]; miss = 4 not in items. Pass if miss is True and code uses "not in".'
+              example={`items = [1,2,3]\nmiss = 4 not in items`}
+              check={({get, code}) => {
+                const miss = get("miss");
+                const used = /\bnot\s+in\b/.test(code);
+                const pass = used && miss === true;
+                if (pass) onPass("q14");
+                return pass;
+              }}
+            />
+
+            {/* Q15–Q20: Bitwise */}
+            <PyQuiz
+              id="q15"
+              title="Q15 · bitwise AND &"
+              prompt='Use a=0b1100 and b=0b1010; r = a & b. Pass if r==8 and code uses "&".'
+              example={`a = 0b1100\nb = 0b1010\nr = a & b`}
+              check={({get, code}) => {
+                const r = get("r");
+                const used = /&/.test(code);
+                const pass = used && r === 8;
+                if (pass) onPass("q15");
+                return pass;
+              }}
+            />
+
+            <PyQuiz
+              id="q16"
+              title="Q16 · bitwise OR |"
+              prompt='Use a=0b0101 and b=0b1000; r = a | b. Pass if r==13 and code uses "|".'
+              example={`a = 0b0101\nb = 0b1000\nr = a | b`}
+              check={({get, code}) => {
+                const r = get("r");
+                const used = /\|/.test(code);
+                const pass = used && r === 13;
+                if (pass) onPass("q16");
+                return pass;
+              }}
+            />
+
+            <PyQuiz
+              id="q17"
+              title="Q17 · bitwise XOR ^"
+              prompt='Use a=0b1111 and b=0b0101; r = a ^ b. Pass if r==10 and code uses "^".'
+              example={`a = 0b1111\nb = 0b0101\nr = a ^ b`}
+              check={({get, code}) => {
+                const r = get("r");
+                const used = /\^/.test(code);
+                const pass = used && r === 10;
+                if (pass) onPass("q17");
+                return pass;
+              }}
+            />
+
+            <PyQuiz
+              id="q18"
+              title="Q18 · bitwise NOT ~"
+              prompt='Let a=5; r = ~a. Pass if r==-6 and code uses "~".'
+              example={`a = 5\nr = ~a`}
+              check={({get, code}) => {
+                const r = get("r");
+                const used = /~\s*a\b/.test(code);
+                const pass = used && r === -6;
+                if (pass) onPass("q18");
+                return pass;
+              }}
+            />
+
+            <PyQuiz
+              id="q19"
+              title="Q19 · left shift <<"
+              prompt='Let a=3; l = a << 2. Pass if l==12 and code uses "<<".'
+              example={`a = 3\nl = a << 2`}
+              check={({get, code}) => {
+                const l = get("l");
+                const used = /<</.test(code);
+                const pass = used && l === 12;
+                if (pass) onPass("q19");
+                return pass;
+              }}
+            />
+
+            <PyQuiz
+              id="q20"
+              title="Q20 · right shift >>"
+              prompt='Let a=20; r = a >> 2. Pass if r==5 and code uses ">>".'
+              example={`a = 20\nr = a >> 2`}
+              check={({get, code}) => {
+                const r = get("r");
+                const used = />>/.test(code);
+                const pass = used && r === 5;
+                if (pass) onPass("q20");
+                return pass;
+              }}
+            />
+
+            <Card title="Recap & Tips" footer="Think in booleans; group with parentheses; remember identity vs equality.">
               <ul className="list-disc ml-6 space-y-1">
-                <li>Prefer <span className="mono">**</span> over <span className="mono">math.pow</span> for integers.</li>
-                <li>Use <span className="mono">//</span> for integer division, <span className="mono">%</span> for remainders.</li>
-                <li>Bitwise ops are for integers; logical ops are for booleans.</li>
+                <li>
+                  <b>Chaining</b>: <span className="mono">a &lt; b &lt; c</span> is the same as <span className="mono">(a &lt; b) and (b &lt; c)</span>, but more readable and evaluated once per operand.
+                </li>
+                <li>
+                  <b>Equality vs Identity</b>: <span className="mono">==</span> compares values; <span className="mono">is</span> compares whether two names point to the <i>same object</i>.
+                </li>
+                <li>
+                  <b>Membership</b>: strings check substrings; lists/sets check elements. Use <span className="mono">not in</span> to negate.
+                </li>
+                <li>
+                  <b>Logical precedence</b>: <span className="mono">not</span> &gt; <span className="mono">and</span> &gt; <span className="mono">or</span>. When unsure, add parentheses.
+                </li>
+                <li>
+                  <b>Bitwise</b>: work on integers only. Quick memory: AND keeps common 1s, OR keeps any 1, XOR keeps different bits, <span className="mono">~</span> flips all bits, <span className="mono">&lt;&lt;/&gt;&gt;</span> shift left/right.
+                </li>
               </ul>
             </Card>
+
           </main>
         </div>
       );

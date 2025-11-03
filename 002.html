@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Python Class 2 · Numbers (Strict, Auto-Strip)</title>
+  <title>Python Class 2 · Numbers & Math & Arithmetic Operators & Assignment Operators</title>
   <!-- Tailwind (CDN) -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- React 18 UMD + ReactDOM UMD (development builds) -->
@@ -25,16 +25,18 @@
   <script type="text/babel">
     const { useEffect, useState } = React;
 
-    // Boot Pyodide and define a helper run_user that auto-strips each line and captures stdout/stderr.
+    // --- Boot Pyodide (v0.29) and inject helpers ---
     const pyodideReadyPromise = (async () => {
       const p = await loadPyodide({
         indexURL: "https://cdn.jsdelivr.net/pyodide/v0.29.0/full/"
       });
       await p.runPythonAsync([
-      "import sys, io",
+        "import sys, io",
         "def _auto_strip_lines(src):",
-        "    lines = src.replace('\\r\\n','\\n').replace('\\r','\\n').split('\\n')",
-        "    return '\\n'.join([ln.strip() for ln in lines])",
+        "    s = src.replace('\\r\\n','\\n').replace('\\r','\\n')",
+        "    lines = s.split('\\n')",
+        "    # keep indentation; only trim the end of each line",
+        "    return '\\n'.join([ln.rstrip() for ln in lines])",
         "",
         "def run_user(src):",
         "    code = _auto_strip_lines(src)",
@@ -47,7 +49,7 @@
         "    finally:",
         "        sys.stdout, sys.stderr = old_out, old_err",
         "    return {'glb': glb, 'out': _out.getvalue(), 'err': _err.getvalue(), 'code': code}",
-    ].join('\n'));
+      ].join('\n'));
       return p;
     })().catch(e => {
       console.error("Pyodide init failed:", e);
@@ -65,24 +67,24 @@
       return { pyodide, err };
     }
 
-    // ✅ 保留 glb 为 PyProxy；out/err/code 做“有 toJs 就用，没有就直接用”
+    // Keep glb as PyProxy; convert strings safely
     async function runUser(pyodide, code) {
       const run_user = pyodide.globals.get("run_user");
-      const res = run_user(code);                    // PyProxy(dict)
-
+      const res = run_user(code); // dict PyProxy
       const getJs = (obj, key) => {
-        const v = obj.get(key);                      // 可能是 PyProxy，也可能已是 JS 值
+        const v = obj.get(key);
         return (v && typeof v.toJs === "function") ? v.toJs() : v;
       };
-
-      const glb = res.get("glb");                    // 这一定要保留为 PyProxy（后面要 .get() 变量）
-      const out = getJs(res, "out");                 // string
-      const err = getJs(res, "err");                 // string
-      const codeNorm = getJs(res, "code");           // string
-
-      res.destroy && res.destroy();                  // 回收外层 dict
+      const glb = res.get("glb");                 // PyProxy(dict)
+      const out = getJs(res, "out");              // string
+      const err = getJs(res, "err");              // string
+      const codeNorm = getJs(res, "code");        // string
+      res.destroy && res.destroy();
       return { glb, out, err, code: codeNorm };
     }
+
+    // Small helpers
+    function approx(a,b,eps=1e-9){ return Math.abs(a-b) < eps; }
 
     function Code({children}){
       return <pre className="bg-gray-950 text-gray-100 p-4 rounded-2xl text-sm overflow-auto shadow-inner mono"><code>{children}</code></pre>;
@@ -114,18 +116,20 @@
 
     function Intro(){
       return (
-        <Card title="Class 2: Numbers (int, float), arithmetic, print — Strict mode">
+        <Card title="Class 2: Numbers (int, float), arithmetic operators, assignment operatorsc, math">
           <ul className="list-disc ml-6 space-y-1">
-            <li><b>Strict rule:</b> Use the exact numbers specified in each quiz (e.g., a=7 and b=3).</li>
-            <li><b>int</b> vs <b>float</b>, ops: <span className="mono">+</span> <span>/</span> <span>-</span> <span>*</span> <span className="mono">//</span> <span className="mono">%</span> <span className="mono">**</span>.</li>
-            <li><span className="mono">print(...)</span> output is captured and compared when required.</li>
-            <li>Each line of your input is auto-stripped (leading/trailing spaces removed).</li>
+            <li>Strict rule: Use the exact numbers specified in each quiz (e.g., a=7 and b=3).</li>
+            <li>int vs float, ops: <span className="mono">+</span> <span>/</span> <span>-</span> <span>*</span> <span className="mono">//</span> <span className="mono">%</span> <span className="mono">**</span>.</li>
+            <li>Import once: <span className="mono">import math</span>. Constants: <span className="mono">math.pi</span>, <span className="mono">math.e</span>.</li>
+            <li>Popular functions: <span className="mono">sqrt</span>, <span className="mono">floor</span>, <span className="mono">ceil</span>, <span className="mono">fabs</span>, <span className="mono">factorial</span>, <span className="mono">pow</span>, <span className="mono">log</span>, <span className="mono">log10</span>, <span className="mono">sin</span>, <span className="mono">cos</span>, <span className="mono">radians</span>.</li>
+            <li>Arithmetic Operators: <span className="mono">+</span>, <span className="mono">-</span>, <span className="mono">*</span>, <span className="mono">/</span>, <span className="mono">//</span>, <span className="mono">%</span>, <span className="mono">**</span>.</li>
+            <li>Assignment Operators: <span className="mono">=</span>, <span className="mono">+=</span>, <span className="mono">-=</span>, <span className="mono">*=</span>, <span className="mono">/=</span>, <span className="mono">%=</span>, <span className="mono">//=</span>, <span className="mono">**=</span>.</li>
           </ul>
         </Card>
       );
     }
 
-    // Reusable Python quiz with textarea
+    // Generic quiz component
     function PyQuiz({id, title, prompt, starter="", example, check}){
       const { pyodide, err } = usePyRunner();
       const [code, setCode] = useState(starter);
@@ -136,18 +140,19 @@
         setStatus({ok:null, text:"Running..."});
         try{
           const res = await runUser(pyodide, code);
-          const glb = res.glb;  // PyProxy (dict)
+          const glb = res.glb;
           const out = res.out;
           const err = res.err;
           const codeNorm = res.code;
-          const toJsVal = (name) => {
+          const get = (name) => {
             const pyv = glb.get(name);
             if (pyv === undefined || pyv === null) return undefined;
             return (typeof pyv.toJs === "function") ? pyv.toJs() : pyv;
           };
-          const qpass = await check({ glb, out, err, code: codeNorm, get: toJsVal });
 
-          // 变量快照（把 glb 中用户定义的变量转成 JS 值）
+          const qpass = await check({glb, out, err, code: codeNorm, get});
+
+          // Snapshot variables
           let snapshot = {};
           try {
             const ks = glb.keys();
@@ -207,13 +212,13 @@
           setScore(s => s + 1);
         }
       }
-      const total = 7;
+      const total = 12;
       const progress = Math.round(Object.keys(done).length/total*100);
 
       return (
         <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100">
           <header className="max-w-5xl mx-auto px-6 py-8">
-            <h1 className="text-3xl font-bold tracking-tight">Python Class 2 · Numbers (Strict, Auto-Strip)</h1>
+            <h1 className="text-3xl font-bold tracking-tight">Python Class 2 ·  Numbers & Math & Arithmetic Operators & Assignment Operators</h1>
             <p className="text-gray-600 mt-1">Complete {total} quizzes using the exact numbers required.</p>
           </header>
 
@@ -232,7 +237,7 @@
 
             <PyQuiz
               id="q1"
-              title="Quiz 1 · int addition (strict numbers)"
+              title="Quiz 1 · int addition"
               prompt="Use exactly a=7 and b=3, then compute c=a+b. Pass if a==7, b==3, and c==a+b==10."
               example={`a = 7\nb = 3\nc = a + b`}
               check={({get}) => {
@@ -245,7 +250,7 @@
 
             <PyQuiz
               id="q2"
-              title="Quiz 2 · float division (strict numbers)"
+              title="Quiz 2 · float division"
               prompt="Compute x = 7/2 using the literal 7 and 2. Pass if x == 3.5 (float)."
               example={`x = 7 / 2`}
               check={({get, code}) => {
@@ -259,7 +264,7 @@
 
             <PyQuiz
               id="q3"
-              title="Quiz 3 · floor division and modulo (strict numbers)"
+              title="Quiz 3 · floor division and modulo"
               prompt="Use a=7 and b=3, set q = a // b and r = a % b. Pass if q==2 and r==1."
               example={`a = 7\nb = 3\nq = a // b\nr = a % b`}
               check={({get}) => {
@@ -272,7 +277,7 @@
 
             <PyQuiz
               id="q4"
-              title="Quiz 4 · exponentiation (strict numbers)"
+              title="Quiz 4 · exponentiation"
               prompt="Set y = 2 ** 5 using the literal 2 and 5. Pass if y == 32."
               example={`y = 2 ** 5`}
               check={({get, code}) => {
@@ -286,7 +291,7 @@
 
             <PyQuiz
               id="q5"
-              title="Quiz 5 · precedence vs parentheses (strict numbers)"
+              title="Quiz 5 · precedence vs parentheses"
               prompt="Make ans equal to (2+3)*4 using parentheses. Pass if ans == 20 and the code contains parentheses around 2+3."
               example={`ans = (2 + 3) * 4`}
               check={({get, code}) => {
@@ -300,7 +305,7 @@
 
             <PyQuiz
               id="q6"
-              title="Quiz 6 · type conversion (strict forms)"
+              title="Quiz 6 · type conversion"
               prompt="Given s='3.14', create pi = float(s) and n = int(3.9). Pass if pi==3.14 and n==3, and your code uses float( and int( exactly."
               example={`s = "3.14"\npi = float(s)\nn = int(3.9)`}
               check={({get, code}) => {
@@ -314,24 +319,101 @@
               }}
             />
 
+            {/* += */}
             <PyQuiz
               id="q7"
-              title="Quiz 7 · print output (strict)"
-              prompt="Print the value 12.5 exactly once using print(...). Pass if stdout is exactly '12.5\n'."
-              example={`x = 12.5\nprint(x)`}
-              check={({out}) => {
-                const pass = out === "12.5\n";
-                if (pass) { onPass("q7"); }
+              title="Quiz 7 · augmented assignment (+=)"
+              prompt="Use a=5, then use a += 3 to increase a by 3. Pass if a==8."
+              example={`a = 5\na += 3`}
+              check={({get, code}) => {
+                const a = get("a");
+                const used = /\ba\s*\+=\s*3\b/.test(code);
+                const pass = used && a === 8;
+                if (pass) { onPass("q8"); }
                 return pass;
+              }}
+            />
+
+            <PyQuiz
+              id="q8"
+              title="Quiz 8 · import math and sqrt"
+              prompt='Import math and compute x = math.sqrt(81). Pass if x == 9; code must use import math and math.sqrt('
+              example={`import math\nx = math.sqrt(81)`}
+              check={({get, code}) => {
+                const x = get("x");
+                const usedImport = /(^|\n)\s*import\s+math\b/.test(code);
+                const usedSqrt = /math\.sqrt\(/.test(code);
+                const ok = usedImport && usedSqrt && x === 9;
+                if (ok) onPass("q1");
+                return ok;
+              }}
+            />
+
+            <PyQuiz
+              id="q9"
+              title="Quiz 9 · floor and ceil"
+              prompt='Make a = math.floor(3.7) and b = math.ceil(3.1). Pass if a==3 and b==4; code must use math.floor and math.ceil.'
+              example={`import math\na = math.floor(3.7)\nb = math.ceil(3.1)`}
+              check={({get, code}) => {
+                const a = get("a"); const b = get("b");
+                const usedFloor = /math\.floor\(/.test(code);
+                const usedCeil = /math\.ceil\(/.test(code);
+                const ok = usedFloor && usedCeil && a === 3 && b === 4;
+                if (ok) onPass("q2");
+                return ok;
+              }}
+            />
+
+            <PyQuiz
+              id="q10"
+              title="Quiz 10 · pi and area"
+              prompt='Use r = 2; area = math.pi * (r ** 2). Pass if area ≈ 12.56637; code must use math.pi and **.'
+              example={`import math\nr = 2\narea = math.pi * (r ** 2)`}
+              check={({get, code}) => {
+                const area = get("area");
+                const usedPi = /math\.pi/.test(code);
+                const usedPow = /\*\*/.test(code);
+                const ok = usedPi && usedPow && approx(area, 12.566370614359172);
+                if (ok) onPass("q3");
+                return ok;
+              }}
+            />
+
+            <PyQuiz
+              id="q11"
+              title="Quiz 11 · radians and sin"
+              prompt='Use ang_deg = 30; ang_rad = math.radians(ang_deg); s = math.sin(ang_rad). Pass if s ≈ 0.5 and code uses math.radians('
+              example={`import math\nang_deg = 30\nang_rad = math.radians(ang_deg)\ns = math.sin(ang_rad)`}
+              check={({get, code}) => {
+                const s = get("s");
+                const usedRad = /math\.radians\(/.test(code);
+                const ok = usedRad && approx(s, 0.5);
+                if (ok) onPass("q4");
+                return ok;
+              }}
+            />
+
+            <PyQuiz
+              id="q12"
+              title="Quiz 12 · log and log10"
+              prompt='Make a = math.log(math.e) and b = math.log10(100). Pass if a ≈ 1.0 and b == 2; code must use math.log and math.log10.'
+              example={`import math\na = math.log(math.e)\nb = math.log10(100)`}
+              check={({get, code}) => {
+                const a = get("a"); const b = get("b");
+                const usedLog = /math\.log\(/.test(code);
+                const usedLog10 = /math\.log10\(/.test(code);
+                const ok = usedLog && usedLog10 && approx(a, 1.0) && b === 2;
+                if (ok) onPass("q5");
+                return ok;
               }}
             />
 
             <Card title="Recap & Tips" footer="Try: negative operands with // and %, use round(x, k), and confirm relationships like a == (a//b)*b + (a%b).">
               <ul className="list-disc ml-6 space-y-1">
                 <li>Strict mode requires the exact numbers or forms mentioned in each prompt.</li>
-                <li><span className="mono">/</span> is floating-point division; <span className="mono">//</span> floors toward negative infinity.</li>
-                <li><span className="mono">%</span> remainder; identity: <span className="mono">a == (a // b) * b + (a % b)</span>.</li>
                 <li>Use parentheses to control precedence. When in doubt, add them.</li>
+                <li>Prefer <span className="mono">**</span> over <span className="mono">math.pow</span> for integers.</li>
+                <li>Use<span className="mono">/</span> is floating-point division; <span className="mono">//</span> for integer division, <span className="mono">%</span> for remainders.</li>
               </ul>
             </Card>
           </main>
