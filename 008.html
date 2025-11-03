@@ -232,6 +232,29 @@
       );
     }
 
+    // --- Bottom navigation (consistent spacing + same card style) ---
+    function FooterNav({ homeHref = "index.html", nextHref = "#", nextLabel = "Next lesson" }) {
+      return (
+        <div className="rounded-2xl shadow-lg border border-gray-200 bg-white p-5 flex items-center justify-between">
+          <a
+            href={homeHref}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-600"
+          >
+            <span className="mono">←</span>
+            <span>Back to Homepage</span>
+          </a>
+
+          <a
+            href={nextHref}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600"
+          >
+            <span>{nextLabel}</span>
+            <span className="mono">→</span>
+          </a>
+        </div>
+      );
+    }
+
     function App(){
       const [score, setScore] = useState(0);
       const [done, setDone] = useState({});
@@ -380,12 +403,7 @@
               id="q9"
               title="Q9 · frozenset immutability"
               prompt='Make fs = frozenset({1,2}). Then try calling fs.add(3) inside try/except. If exception happens, set imm = True. Pass if imm == True.'
-              example={`fs = frozenset({1,2})
-imm = False
-try:
-    fs.add(3)
-except:
-    imm = True`}
+              example={`fs = frozenset({1,2})\nimm = False\ntry:\n    fs.add(3)\nexcept:\n    imm = True`}
               check={({get, code}) => {
                 const imm = get("imm");
                 const usedFrozen = /frozenset\(/.test(code);
@@ -396,7 +414,7 @@ except:
               }}
             />
 
-<Card title="Recap & Tips" footer="Sets excel at uniqueness and fast membership checks. Use set operations to combine or compare groups. Use frozenset when you need an immutable, hashable collection.">
+            <Card title="Recap & Tips" footer="Sets excel at uniqueness and fast membership checks. Use set operations to combine or compare groups. Use frozenset when you need an immutable, hashable collection.">
               <ul className="list-disc ml-6 space-y-1">
                 <li>Empty set is <span className="mono">set()</span>; <span className="mono">{'{'}{'}'}</span> is an empty dict.</li>
                 <li>Use <span className="mono">discard</span> when you may remove a non-existent item (no error).</li>
@@ -404,6 +422,13 @@ except:
                 <li>For deterministic display, convert to a sorted list: <span className="mono">sorted(list(s))</span>.</li>
               </ul>
             </Card>
+
+            <FooterNav
+              homeHref="index.html"
+              nextHref="009.html"        // ← 改成你下一堂课的地址
+              nextLabel="Next: Class 9"  // ← 改成你想显示的标题
+            />
+
           </main>
         </div>
       );
