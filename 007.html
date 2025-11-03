@@ -338,6 +338,7 @@
               id="q1"
               title="Q1 · make an empty tuple"
               prompt='Create t = (). Pass if t is a tuple (Pyodide shows it as a JS array) and len(t) == 0 and your code uses the literal ().'
+              guide={`tp = ()`}
               solution={`t = ()`}
               check={({get, code}) => {
                 const t = get("t");
@@ -352,6 +353,7 @@
               id="q2"
               title="Q2 · single-element tuple"
               prompt='Create one = (1,) with a trailing comma. Pass if it behaves like a 1-length tuple (Pyodide shows it as [1]) and code includes "(1,)".'
+              guide={`two = (2,)`}
               solution={`one = (1,)`}
               check={({get, code}) => {
                 const one = get("one");
@@ -366,6 +368,7 @@
               id="q3"
               title="Q3 · indexing and negative index"
               prompt='Use a = (10, 20, 30); create second = a[1] and last = a[-1]. Pass if second == 20 and last == 30, and code contains [1] and [-1].'
+              guide={`a = (15, 25, 35, 45, 55)\nsecond = a[2]\nlast = a[-2]`}
               solution={`a = (10, 20, 30)\nsecond = a[1]\nlast = a[-1]`}
               check={({get, code}) => {
                 const second = get("second");
@@ -382,6 +385,7 @@
               id="q4"
               title="Q4 · slicing returns a tuple"
               prompt='Use b = (0,1,2,3,4); create mid = b[1:4]. Pass if mid == (1,2,3) and your slice uses a colon.'
+              guide={`a = (1,2,3,4,5)\nmid = b[1:4]`}
               solution={`b = (0,1,2,3,4)\nmid = b[1:4]`}
               check={({get, code}) => {
                 const mid = get("mid");
@@ -396,6 +400,7 @@
               id="q5"
               title="Q5 · tuple unpacking"
               prompt='Create t = (3, 4); then do x, y = t. Pass if x == 3 and y == 4 and code uses a comma on the left side.'
+              guide={`t = (5, 6)\nx, y = t`}
               solution={`t = (3, 4)\nx, y = t`}
               check={({get, code}) => {
                 const x = get("x"); const y = get("y");
@@ -410,6 +415,7 @@
               id="q6"
               title="Q6 · immutability check (TypeError)"
               prompt='Start with t = (1,2). In a try/except block, attempt t[0] = 9, set imm = True inside except TypeError. Pass if imm is True.'
+              guide={`t = (4,5)\nimm = False\ntry:\n    t[0] = 8\nexcept TypeError:\n    imm = False`}
               solution={`t = (1,2)\nimm = False\ntry:\n    t[0] = 9\nexcept TypeError:\n    imm = True`}
               check={({get, code}) => {
                 const imm = get("imm");
@@ -425,6 +431,7 @@
               id="q7"
               title="Q7 · tuple as dict key"
               prompt='Create key = ("x", 1); d = {key: "ok"}; val = d[("x",1)]. Pass if val == "ok".'
+              guide={`key = ("a", 1)\nd = {key: "notok"}\nval = d[("b",2)]`}
               solution={`key = ("x", 1)\nd = {key: "ok"}\nval = d[("x",1)]`}
               check={({get}) => {
                 const val = get("val");
@@ -438,6 +445,7 @@
               id="q8"
               title="Q8 · tuple methods count and index"
               prompt='Use t = (1,2,2,3). Create c = t.count(2) and i = t.index(3). Pass if c == 2 and i == 3 and code uses .count( and .index('
+              guide={`t = (8,4,4,4,7)\nc = t.count(4)\ni = t.index(4)`}
               solution={`t = (1,2,2,3)\nc = t.count(2)\ni = t.index(3)`}
               check={({get, code}) => {
                 const c = get("c"); const i = get("i");
@@ -453,6 +461,7 @@
               id="q9"
               title="Q9 · mutable item inside a tuple"
               prompt='Make t = ([1,2], 99). Then append 3 to the inner list. Pass if t == ([1,2,3], 99) and code uses .append('
+              guide={`t = ([6,5], 88)\nt[0].append(4)`}
               solution={`t = ([1,2], 99)\nt[0].append(3)`}
               check={({get, code}) => {
                 const t = get("t");

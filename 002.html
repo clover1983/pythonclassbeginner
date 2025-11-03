@@ -344,6 +344,7 @@
               id="q1"
               title="Quiz 1 · int addition"
               prompt="Use exactly a=7 and b=3, then compute c=a+b. Pass if a==7, b==3, and c==a+b==10."
+              guide={`a = 5\nb = 2\nc = a + b`}
               solution={`a = 7\nb = 3\nc = a + b`}
               check={({get}) => {
                 const a = get("a"), b = get("b"), c = get("c");
@@ -357,6 +358,7 @@
               id="q2"
               title="Quiz 2 · float division"
               prompt="Compute x = 7/2 using the literal 7 and 2. Pass if x == 3.5 (float)."
+              guide={`x = 3 / 2`}
               solution={`x = 7 / 2`}
               check={({get, code}) => {
                 const x = get("x");
@@ -371,6 +373,7 @@
               id="q3"
               title="Quiz 3 · floor division and modulo"
               prompt="Use a=7 and b=3, set q = a // b and r = a % b. Pass if q==2 and r==1."
+              guide={`a = 7\nb = 2\nq = a // b\nr = a % b`}
               solution={`a = 7\nb = 3\nq = a // b\nr = a % b`}
               check={({get}) => {
                 const a = get("a"), b = get("b"), q = get("q"), r = get("r");
@@ -384,6 +387,7 @@
               id="q4"
               title="Quiz 4 · exponentiation"
               prompt="Set y = 2 ** 5 using the literal 2 and 5. Pass if y == 32."
+              guide={`x = 3 ** 7`}
               solution={`y = 2 ** 5`}
               check={({get, code}) => {
                 const y = get("y");
@@ -398,6 +402,7 @@
               id="q5"
               title="Quiz 5 · precedence vs parentheses"
               prompt="Make ans equal to (2+3)*4 using parentheses. Pass if ans == 20 and the code contains parentheses around 2+3."
+              guide={`ans = (5 + 6) * 7`}
               solution={`ans = (2 + 3) * 4`}
               check={({get, code}) => {
                 const ans = get("ans");
@@ -412,6 +417,7 @@
               id="q6"
               title="Quiz 6 · type conversion"
               prompt="Given s='3.14', create pi = float(s) and n = int(3.9). Pass if pi==3.14 and n==3, and your code uses float( and int( exactly."
+              guide={`s = "6.08"\npi = float(s)\nn = int(5.7)`}
               solution={`s = "3.14"\npi = float(s)\nn = int(3.9)`}
               check={({get, code}) => {
                 const pi = get("pi");
@@ -429,6 +435,7 @@
               id="q7"
               title="Quiz 7 · augmented assignment (+=)"
               prompt="Use a=5, then use a += 3 to increase a by 3. Pass if a==8."
+              guide={`x = 6\nx += 3`}
               solution={`a = 5\na += 3`}
               check={({get, code}) => {
                 const a = get("a");
@@ -443,6 +450,7 @@
               id="q8"
               title="Quiz 8 · import math and sqrt"
               prompt='Import math and compute x = math.sqrt(81). Pass if x == 9; code must use import math and math.sqrt('
+              guide={`import math\nx = math.sqrt(16)`}
               solution={`import math\nx = math.sqrt(81)`}
               check={({get, code}) => {
                 const x = get("x");
@@ -458,6 +466,7 @@
               id="q9"
               title="Quiz 9 · floor and ceil"
               prompt='Make a = math.floor(3.7) and b = math.ceil(3.1). Pass if a==3 and b==4; code must use math.floor and math.ceil.'
+              guide={`import math\na = math.floor(4.9)\nb = math.ceil(5.3)`}
               solution={`import math\na = math.floor(3.7)\nb = math.ceil(3.1)`}
               check={({get, code}) => {
                 const a = get("a"); const b = get("b");
@@ -473,6 +482,7 @@
               id="q10"
               title="Quiz 10 · pi and area"
               prompt='Use r = 2; area = math.pi * (r ** 2). Pass if area ≈ 12.56637; code must use math.pi and **.'
+              guide={`import math\nr = 3\narea = math.pi * (r ** 3)`}
               solution={`import math\nr = 2\narea = math.pi * (r ** 2)`}
               check={({get, code}) => {
                 const area = get("area");
@@ -488,6 +498,7 @@
               id="q11"
               title="Quiz 11 · radians and sin"
               prompt='Use ang_deg = 30; ang_rad = math.radians(ang_deg); s = math.sin(ang_rad). Pass if s ≈ 0.5 and code uses math.radians('
+              guide={`import math\nang_deg = 60\nang_rad = math.radians(ang_deg)\ns = math.sin(ang_rad)`}
               solution={`import math\nang_deg = 30\nang_rad = math.radians(ang_deg)\ns = math.sin(ang_rad)`}
               check={({get, code}) => {
                 const s = get("s");
@@ -502,6 +513,7 @@
               id="q12"
               title="Quiz 12 · log and log10"
               prompt='Make a = math.log(math.e) and b = math.log10(100). Pass if a ≈ 1.0 and b == 2; code must use math.log and math.log10.'
+              guide={`import math\na = math.log(math.e)\nb = math.log10(1000)`}
               solution={`import math\na = math.log(math.e)\nb = math.log10(100)`}
               check={({get, code}) => {
                 const a = get("a"); const b = get("b");

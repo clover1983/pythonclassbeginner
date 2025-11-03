@@ -334,6 +334,7 @@
               id="q1"
               title="Q1 · Concatenation (strict literals)"
               prompt='Create name = "Lily" and greeting = "Hello, " + name + "!"  Pass if greeting == "Hello, Lily!" and code uses the "+" concatenation.'
+              guide={`name = "Lulu"\ngreeting = "Hi, " + name + "!"`}
               solution={`name = "Lily"\ngreeting = "Hello, " + name + "!"`}
               check={({get, code}) => {
                 const name = get("name"), greeting = get("greeting");
@@ -348,6 +349,7 @@
               id="q2"
               title="Q2 · upper and len (strict forms)"
               prompt='Use s = "learning python". Create u = s.upper() and n = len(s). Pass if u == "LEARNING PYTHON" and n == 15.'
+              guide={`s = "learn html"\nu = s.upper()\nn = len(s)`}
               solution={`s = "learning python"\nu = s.upper()\nn = len(s)`}
               check={({get, code}) => {
                 const s = get("s"), u = get("u"), n = get("n");
@@ -363,6 +365,7 @@
               id="q3"
               title="Q3 · slicing"
               prompt='Use word = "HELLO". Create mid = word[1:4]. Pass if mid == "ELL" and code includes [1:4].'
+              guide={`word = "WELCOME"\nmid = word[1:3]`}
               solution={`word = "HELLO"\nmid = word[1:4]`}
               check={({get, code}) => {
                 const word = get("word"), mid = get("mid");
@@ -377,6 +380,7 @@
               id="q4"
               title="Q4 · split to get domain"
               prompt='Use email = "kid@example.com". Create domain = email.split("@")[1]. Pass if domain == "example.com".'
+              guide={`email = "mom@winwin66.com"\ndomain = email.split("@")[1]`}
               solution={`email = "kid@example.com"\ndomain = email.split("@")[1]`}
               check={({get, code}) => {
                 const email = get("email"), domain = get("domain");
@@ -390,6 +394,7 @@
               id="q5"
               title="Q5 · join words into a sentence"
               prompt='Use words = ["I", "love", "Python"]. Create sent = " ".join(words). Pass if sent == "I love Python".'
+              guide={`words = ["You", "like", "Java"]\nsent = " ".join(words)`}
               solution={`words = ["I", "love", "Python"]\nsent = " ".join(words)`}
               check={({get, code}) => {
                 const words = get("words"), sent = get("sent");
@@ -404,6 +409,7 @@
               id="q6"
               title="Q6 · find and replace"
               prompt='Use text = "abcabc". Create idx = text.find("b") and new = text.replace("a","A"). Pass if idx == 1 and new == "AbcAbc".'
+              guide={`text = "efgefg"\nidx = text.find("g")\nnew = text.replace("e","E")`}
               solution={`text = "abcabc"\nidx = text.find("b")\nnew = text.replace("a","A")`}
               check={({get, code}) => {
                 const text = get("text"), idx = get("idx"), nw = get("new");
@@ -419,6 +425,7 @@
               id="q7"
               title="Q7 · strip and endswith"
               prompt='Use raw = "  lily.py  ". Create filename = raw.strip(). Pass if filename == "lily.py" and filename.endswith(".py").'
+              guide={`raw = "  test.py  "\nfilename = raw.strip()`}
               solution={`raw = "  lily.py  "\nfilename = raw.strip()`}
               check={({get, code}) => {
                 const raw = get("raw"), filename = get("filename");
@@ -438,6 +445,7 @@
               id="q8"
               title="Q8 · f-string formatting"
               prompt='Use name="Lily", age=10. Create msg = f"{name} is {age}" and print(msg). Pass if stdout is exactly "Lily is 10\n" and code uses an f-string.'
+              guide={`name = "Lucas"\nage = 14\nmsg = f"{name} is {age}"\nprint(msg)`}
               solution={`name = "Lily"\nage = 10\nmsg = f"{name} is {age}"\nprint(msg)`}
               check={({out, code, get}) => {
                 const name = get("name"), age = get("age"), msg = get("msg");

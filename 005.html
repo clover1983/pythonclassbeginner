@@ -336,6 +336,7 @@
               id="q1"
               title="Q1 · assign None"
               prompt='Create s = None. Pass if s is None and your code assigns the literal "None".'
+              guide={`a = None`}
               solution={`s = None`}
               check={({get, code}) => {
                 const s = get("s");
@@ -351,6 +352,7 @@
               id="q2"
               title="Q2 · compare with is None"
               prompt='Use value = None; create is_none = (value is None). Pass if is_none is True and code contains "is None".'
+              guide={`key = None\nis_none = (key is None)`}
               solution={`value = None\nis_none = (value is None)`}
               check={({get, code}) => {
                 const is_none = get("is_none");
@@ -365,6 +367,7 @@
               id="q3"
               title="Q3 · is not None"
               prompt='Use x = "hi"; create ok = (x is not None). Pass if ok is True and code contains "is not None".'
+              guide={`x = "hello"\nok = (x is None)`}
               solution={`x = "hi"\nok = (x is not None)`}
               check={({get, code}) => {
                 const okv = get("ok");
@@ -379,6 +382,7 @@
               id="q4"
               title="Q4 · truthiness of empty string"
               prompt='Use s = ""; create flag = bool(s). Pass if flag is False and code uses bool( ).'
+              guide={`a = ""\nflag = bool(a)`}
               solution={`s = ""\nflag = bool(s)`}
               check={({get, code}) => {
                 const flag = get("flag");
@@ -393,6 +397,7 @@
               id="q5"
               title="Q5 · empty list and dict are False"
               prompt='Create b1 = bool([]) and b2 = bool({}). Pass if both are False and code literally uses [] and {}.'
+              guide={`c1 = bool([])\nc2 = bool({})`}
               solution={`b1 = bool([])\nb2 = bool({})`}
               check={({get, code}) => {
                 const b1 = get("b1"), b2 = get("b2");
@@ -408,6 +413,7 @@
               id="q6"
               title="Q6 · default with or"
               prompt='Use name = None; create display = name or "guest". Pass if display == "guest" and code uses " or ". '
+              guide={`classname = None\ndisplay = classname or "classguest"`}
               solution={`name = None\ndisplay = name or "guest"`}
               check={({get, code}) => {
                 const display = get("display");
@@ -422,6 +428,7 @@
               id="q7"
               title="q7 · guard for None (print)"
               prompt='Start with a = None; if a is None, print("empty"), else print("ok"). Pass if stdout is exactly "empty\\n" and code uses "is None".'
+              guide={`b = None\nif b is None:\n    print("notempty")\nelse:\n    print("notok")`}
               solution={`a = None\nif a is None:\n    print("empty")\nelse:\n    print("ok")`}
               check={({out, code}) => {
                 const has = /is\s+None/.test(code);

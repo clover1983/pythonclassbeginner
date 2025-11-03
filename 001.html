@@ -415,6 +415,7 @@
               id="q2"
               title="Quiz 2 · define several variables in a single line"
               prompt="Requirement: In one line, assign 1 to x and 2 to y."
+              guide={`a, b = 3, 4`}
               solution={`x, y = 1, 2`}
               check={({get, code}) => {
                 const x = get("x"), y = get("y");
@@ -430,6 +431,7 @@
               id="q3"
               title="Quiz 3 · convert a value to a different data type"
               prompt="Requirement: Convert the string '123' to an integer."
+              guide={`x = '999'\nprint(type(x))\nx = int('999')\nprint(type(x))`}
               solution={`a = '123'\nprint(type(a))\na = int('123')\nprint(type(a))`}
               check={({glb, code}) => {
                 // 必须真的用到了 int('123') 或 int("123")
@@ -458,6 +460,7 @@
               id="q4"
               title="Quiz 4 · check the data type of a value"
               prompt="Requirement: Print the data type of the value 3.14 using type()."
+              guide={`x = 6.41\nprint(type(x))`}
               solution={`a = 3.14\nprint(type(a))`}
               check={({out, code}) => {
                 const usedType = /type\s*\(/.test(code);
@@ -472,6 +475,7 @@
               id="q5"
               title="Quiz 5 · variable names are case-sensitive"
               prompt="Requirement: Create two different variables, named a and A, and assign them different values."
+              guide={`c="string1"\nC=8890\nprint(c)\nprint(C)`}
               solution={`a="string"\nA=9009\nprint(a)\nprint(A)`}
               check={({get}) => {
                 const a = get("a");
@@ -486,6 +490,7 @@
               id="q6"
               title="Quiz 6 · global vs local variables"
               prompt="Requirement: Create a global variable named total, then inside a function create a local variable also named total with a different value, and print both values to show they are not the same."
+              guide={`count = 9\ndef func():\n  count = 6\n  return count\nprint(func())\nprint(count)`}
               solution={`total = 8\ndef func():\n  total = 9\n  return total\nprint(func())\nprint(total)`}
               check={({get, code, out}) => {
                 const hasGlobal = get("total") !== undefined;

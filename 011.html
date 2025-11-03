@@ -370,6 +370,7 @@
               id="q1"
               title="Q1 · equality =="
               prompt='Set a=10, b=10, ok = (a == b). Pass if ok is True and code uses "==".'
+              guide={`a = 1\nb = 11\nok = (a == b)`}
               solution={`a = 10\nb = 10\nok = (a == b)`}
               check={({get, code}) => {
                 const ok = get("ok");
@@ -384,6 +385,7 @@
               id="q2"
               title="Q2 · not equal !="
               prompt='Set a=7, b=3, ok = (a != b). Pass if ok is True and code uses "!=".'
+              guide={`a = 4\nb = 4\nok = (a != b)`}
               solution={`a = 7\nb = 3\nok = (a != b)`}
               check={({get, code}) => {
                 const ok = get("ok");
@@ -398,6 +400,7 @@
               id="q3"
               title="Q3 · greater-than >"
               prompt='Make a=5, b=2, res = (a > b). Pass if res is True and code uses ">".'
+              guide={`a = 4\nb = 6\nres = (a > b)`}
               solution={`a = 5\nb = 2\nres = (a > b)`}
               check={({get, code}) => {
                 const res = get("res");
@@ -412,6 +415,7 @@
               id="q4"
               title="Q4 · less-or-equal <="
               prompt='Make a=3, b=3, res = (a <= b). Pass if res is True and code uses "<=".'
+              guide={`a = 4\nb = 2\nres = (a <= b)`}
               solution={`a = 3\nb = 3\nres = (a <= b)`}
               check={({get, code}) => {
                 const res = get("res");
@@ -426,6 +430,7 @@
               id="q5"
               title="Q5 · greater-or-equal >="
               prompt='Make a=10, b=7, res = (a >= b). Pass if res is True and code uses ">=".'
+              guide={`a = 3\nb = 8\nres = (a >= b)`}
               solution={`a = 10\nb = 7\nres = (a >= b)`}
               check={({get, code}) => {
                 const res = get("res");
@@ -441,6 +446,7 @@
               id="q6"
               title="Q6 · chained comparison"
               prompt='Let x=7; is_between = 1 < x < 10. Pass if True and code uses the chained form "1 < x < 10".'
+              guide={`x = 12\nis_between = 1 < x < 10`}
               solution={`x = 7\nis_between = 1 < x < 10`}
               check={({get, code}) => {
                 const v = get("is_between");
@@ -455,6 +461,7 @@
               id="q7"
               title="Q7 · chained comparison (expanded)"
               prompt='Let x=7; left = (1 < x) and (x < 10). Pass if left is True and code uses "and".'
+              guide={`x = 11\nleft = (6 < x) and (x < 10)`}
               solution={`x = 7\nleft = (1 < x) and (x < 10)`}
               check={({get, code}) => {
                 const v = get("left");
@@ -470,6 +477,7 @@
               id="q8"
               title="Q8 · and + not"
               prompt='Let a=True, b=False; c = a and not b. Pass if c is True and code uses "and" and "not".'
+              guide={`a = False\nb = False\nc = a or not b`}
               solution={`a = True\nb = False\nc = a and not b`}
               check={({get, code}) => {
                 const c = get("c");
@@ -484,6 +492,7 @@
               id="q9"
               title="Q9 · or"
               prompt='Let a=False, b=False; c = a or (not b). Pass if c is True and code uses "or".'
+              guide={`a = False\nb = True\nc = a and (not b)`}
               solution={`a = False\nb = False\nc = a or (not b)`}
               check={({get, code}) => {
                 const c = get("c");
@@ -498,6 +507,7 @@
               id="q10"
               title="Q10 · precedence with parentheses"
               prompt='Set res = (1 < 2) and (3 < 4 or 5 < 1). Pass if res is True and code uses both "and" and "or".'
+              guide={`res = (2 < 1) and (4 < 3 or 1 < 5)`}
               solution={`res = (1 < 2) and (3 < 4 or 5 < 1)`}
               check={({get, code}) => {
                 const res = get("res");
@@ -513,6 +523,7 @@
               id="q11"
               title="Q11 · identity: is"
               prompt='Let lst=[1,2]; c = lst; same = (c is lst). Pass if same is True and code uses "is".'
+              guide={`lst = [3,4]\nc = [4,5]\nsame = (c is lst)`}
               solution={`lst = [1,2]\nc = lst\nsame = (c is lst)`}
               check={({get, code}) => {
                 const same = get("same");
@@ -527,6 +538,7 @@
               id="q12"
               title="Q12 · identity: is not"
               prompt='Let a=[1,2]; b=[1,2]; diff = (a is not b). Pass if diff is True and code uses "is not".'
+              guide={`a = [3,4]\nb = [4,5]\ndiff = (a is not b)`}
               solution={`a = [1,2]\nb = [1,2]\ndiff = (a is not b)`}
               check={({get, code}) => {
                 const diff = get("diff");
@@ -542,6 +554,7 @@
               id="q13"
               title="Q13 · membership: in (string)"
               prompt='Let s="banana"; has = "an" in s. Pass if has is True and code uses "in".'
+              guide={`s = "orange"\nhas = "an" in s`}
               solution={`s = "banana"\nhas = "an" in s`}
               check={({get, code}) => {
                 const has = get("has");
@@ -556,6 +569,7 @@
               id="q14"
               title="Q14 · membership: not in (list)"
               prompt='Let items=[1,2,3]; miss = 4 not in items. Pass if miss is True and code uses "not in".'
+              guide={`items = [1,2,3,4]\nmiss = 4 not in items`}
               solution={`items = [1,2,3]\nmiss = 4 not in items`}
               check={({get, code}) => {
                 const miss = get("miss");
@@ -571,6 +585,7 @@
               id="q15"
               title="Q15 · bitwise AND &"
               prompt='Use a=0b1100 and b=0b1010; r = a & b. Pass if r==8 and code uses "&".'
+              guide={`a = 0b10100\nb = 0b1110\nr = a & b`}
               solution={`a = 0b1100\nb = 0b1010\nr = a & b`}
               check={({get, code}) => {
                 const r = get("r");
@@ -585,6 +600,7 @@
               id="q16"
               title="Q16 · bitwise OR |"
               prompt='Use a=0b0101 and b=0b1000; r = a | b. Pass if r==13 and code uses "|".'
+              guide={`a = 0b10100\nb = 0b1110\nr = a | b`}
               solution={`a = 0b0101\nb = 0b1000\nr = a | b`}
               check={({get, code}) => {
                 const r = get("r");
@@ -599,6 +615,7 @@
               id="q17"
               title="Q17 · bitwise XOR ^"
               prompt='Use a=0b1111 and b=0b0101; r = a ^ b. Pass if r==10 and code uses "^".'
+              guide={`a = 0b10100\nb = 0b1110\nr = a ^ b`}
               solution={`a = 0b1111\nb = 0b0101\nr = a ^ b`}
               check={({get, code}) => {
                 const r = get("r");
@@ -613,6 +630,7 @@
               id="q18"
               title="Q18 · bitwise NOT ~"
               prompt='Let a=5; r = ~a. Pass if r==-6 and code uses "~".'
+              guide={`a = 7\nr = ~a`}
               solution={`a = 5\nr = ~a`}
               check={({get, code}) => {
                 const r = get("r");
@@ -627,6 +645,7 @@
               id="q19"
               title="Q19 · left shift <<"
               prompt='Let a=3; l = a << 2. Pass if l==12 and code uses "<<".'
+              guide={`a = 4\nl = a << 5`}
               solution={`a = 3\nl = a << 2`}
               check={({get, code}) => {
                 const l = get("l");
@@ -641,6 +660,7 @@
               id="q20"
               title="Q20 · right shift >>"
               prompt='Let a=20; r = a >> 2. Pass if r==5 and code uses ">>".'
+              guide={`a = 11\nr = a >> 3`}
               solution={`a = 20\nr = a >> 2`}
               check={({get, code}) => {
                 const r = get("r");

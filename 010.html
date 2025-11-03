@@ -368,6 +368,7 @@
               id="q1"
               title="Q1 · len and type"
               prompt='Make a = [1,2,3]; set n = len(a) and t = type(a).__name__. Pass if n == 3 and t == "list"; code must use len('
+              guide={`a = [4,5,6,7]\nn = len(a)\nt = type(a).__name__`}
               solution={`a = [1,2,3]\nn = len(a)\nt = type(a).__name__`}
               check={({get, code}) => {
                 const n = get("n"); const t = get("t");
@@ -382,6 +383,7 @@
               id="q2"
               title="Q2 · int, float, str conversions"
               prompt='Set i = int("42"), f = float("3.5"), s = str(100). Pass if i == 42, f == 3.5, s == "100"; code must use int( float( str('
+              guide={`i = int("32")\nf = float("4.15")\ns = str(99)`}
               solution={`i = int("42")\nf = float("3.5")\ns = str(100)`}
               check={({get, code}) => {
                 const i = get("i"); const f = get("f"); const s = get("s");
@@ -396,6 +398,7 @@
               id="q3"
               title="Q3 · round and precision"
               prompt='Compute r = round(3.14159, 2). Pass if r == 3.14 and code uses round('
+              guide={`r = round(2.71828, 2)`}
               solution={`r = round(3.14159, 2)`}
               check={({get, code}) => {
                 const r = get("r");
@@ -410,6 +413,7 @@
               id="q4"
               title="Q4 · sum, min, max"
               prompt='Use nums = [5,1,9]. Make s = sum(nums), mn = min(nums), mx = max(nums). Pass if s==15, mn==1, mx==9 and code uses sum( min( max('
+              guide={`nums = [4,7,1]\ns = sum(nums)\nmn = min(nums)\nmx = max(nums)`}
               solution={`nums = [5,1,9]\ns = sum(nums)\nmn = min(nums)\nmx = max(nums)`}
               check={({get, code}) => {
                 const s = get("s"); const mn = get("mn"); const mx = get("mx");
@@ -424,6 +428,7 @@
               id="q5"
               title="Q5 · sorted with reverse and key"
               prompt='Use words = ["pear","apple","banana"]. Make a = sorted(words), b = sorted(words, reverse=True), c = sorted(words, key=len). Pass if a[0]=="apple", b[0]=="pear", c[0]=="pear".'
+              guide={`words = ["orange","apple","banana"]\na = sorted(words)\nb = sorted(words, reverse=True)\nc = sorted(words, key=len)`}
               solution={`words = ["pear","apple","banana"]\na = sorted(words)\nb = sorted(words, reverse=True)\nc = sorted(words, key=len)`}
               check={({get}) => {
                 const a = get("a"); const b = get("b"); const c = get("c");
@@ -437,6 +442,7 @@
               id="q6"
               title="Q6 · enumerate builds index-value pairs"
               prompt='Use pets = ["cat","dog"]. Make pairs = list(enumerate(pets)). Pass if pairs equals [(0,"cat"), (1,"dog")].'
+              guide={`pets = ["cat","pig"]\npairs = list(enumerate(pets))`}
               solution={`pets = ["cat","dog"]\npairs = list(enumerate(pets))`}
               check={({get}) => {
                 const pairs = get("pairs");
@@ -450,6 +456,7 @@
               id="q7"
               title="Q7 · zip merges sequences"
               prompt='Use a = [1,2], b = ["x","y"]. Make z = list(zip(a,b)). Pass if z == [(1,"x"),(2,"y")].'
+              guide={`a = [3,4]\nb = ["h","i"]\nz = list(zip(a,b))`}
               solution={`a = [1,2]\nb = ["x","y"]\nz = list(zip(a,b))`}
               check={({get}) => {
                 const z = get("z");
@@ -463,6 +470,7 @@
               id="q8"
               title="Q8 · any and all"
               prompt='With vals = [0, 1, 2]. Make a = any(vals) and b = all([True, 1, "nonempty"]). Pass if a is True and b is True; code must use any( and all('
+              guide={`vals = [3, 4, 5]\na = any(vals)\nb = all([False, 2, "empty"])`}
               solution={`vals = [0, 1, 2]\na = any(vals)\nb = all([True, 1, "nonempty"])`}
               check={({get, code}) => {
                 const a = get("a"); const b = get("b");
@@ -477,6 +485,7 @@
               id="q9"
               title="Q9 · map and filter (convert to list)"
               prompt='Make nums = [0,1,2,3]. squares = list(map(lambda x: x*x, nums)). evens = list(filter(lambda x: x%2==0, nums)). Pass if squares == [0,1,4,9] and evens == [0,2].'
+              guide={`nums = [2,3,4,5]\nsquares = list(map(lambda x: x*x, nums))\nevens = list(filter(lambda x: x%3==0, nums))`}
               solution={`nums = [0,1,2,3]\nsquares = list(map(lambda x: x*x, nums))\nevens = list(filter(lambda x: x%2==0, nums))`}
               check={({get}) => {
                 const squares = get("squares"); const evens = get("evens");

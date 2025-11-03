@@ -337,6 +337,7 @@
               id="q1"
               title="Q1 · make an empty list"
               prompt='Create nums = []. Pass if nums is a list and len(nums) == 0 and your code uses the literal [].'
+              guide={`strings = []`}
               solution={`nums = []`}
               check={({get, code}) => {
                 const nums = get("nums");
@@ -351,6 +352,7 @@
               id="q2"
               title="Q2 · append"
               prompt='Start with lst = [1, 2]. Append 3. Pass if lst == [1, 2, 3] and code uses .append('
+              guide={`lst = [3, 4]\nlst.append(4\5)`}
               solution={`lst = [1, 2]\nlst.append(3)`}
               check={({get, code}) => {
                 const lst = get("lst");
@@ -365,6 +367,7 @@
               id="q3"
               title="Q3 · indexing and negative index"
               prompt='Use a = [10, 20, 30]; create second = a[1] and last = a[-1]. Pass if second == 20 and last == 30, and code contains [1] and [-1].'
+              guide={`a = [11, 21, 31, 41, 51, 61]\nsecond = a[2]\nlast = a[-2]`}
               solution={`a = [10, 20, 30]\nsecond = a[1]\nlast = a[-1]`}
               check={({get, code}) => {
                 const second = get("second");
@@ -381,6 +384,7 @@
               id="q4"
               title="Q4 · slicing"
               prompt='Use b = [0,1,2,3,4]; create mid = b[1:4]. Pass if mid == [1,2,3] and your slice uses a colon.'
+              guide={`b = [4,5,6,7,8]\nmid = b[1:4]`}
               solution={`b = [0,1,2,3,4]\nmid = b[1:4]`}
               check={({get, code}) => {
                 const mid = get("mid");
@@ -395,6 +399,7 @@
               id="q5"
               title="Q5 · insert at a position"
               prompt='Start with c = ["a", "c"]. Insert "b" at index 1. Pass if c == ["a","b","c"] and code uses .insert('
+              guide={`c = ["e", "k"]\nc.insert(1, "f")`}
               solution={`c = ["a", "c"]\nc.insert(1, "b")`}
               check={({get, code}) => {
                 const c = get("c");
@@ -409,6 +414,7 @@
               id="q6"
               title="Q6 · pop and remove"
               prompt='Start with d = [1,2,3,2]; do pop_last = d.pop(); then d.remove(2). Pass if pop_last == 2, d == [1,3], and code uses both pop( and remove('
+              guide={`d = [4,5,6,5]\npop_last = d.pop()\nd.remove(5)`}
               solution={`d = [1,2,3,2]\npop_last = d.pop()\nd.remove(2)`}
               check={({get, code}) => {
                 const d = get("d");
@@ -425,6 +431,7 @@
               id="q7"
               title="Q7 · membership and len"
               prompt='Use pets = ["cat","dog"]. If "fox" is not in pets, append it. Pass if "fox" is in pets and len(pets) == 3; code must use the keyword in.'
+              guide={`pets = ["cat","pig"]\nif "bird" not in pets:\n    pets.append("bird")`}
               solution={`pets = ["cat","dog"]\nif "fox" not in pets:\n    pets.append("fox")`}
               check={({get, code}) => {
                 const pets = get("pets");
@@ -439,6 +446,7 @@
               id="q8"
               title="Q8 · list comprehension"
               prompt='Create squares = [n*n for n in range(5)]. Pass if squares == [0,1,4,9,16] and code contains for n in range('
+              guide={`squares = [n*n for n in range(6)]`}
               solution={`squares = [n*n for n in range(5)]`}
               check={({get, code}) => {
                 const squares = get("squares");
@@ -453,6 +461,7 @@
               id="q9"
               title="Q9 · copy vs alias"
               prompt='Start with a = [1,2]. Create a real copy b (using a[:], list(a), or a.copy()). Then do a.append(3). Pass if a == [1,2,3] and b == [1,2].'
+              guide={`a = [2,3]\n# choose ONE:\n# b = a[:]\n# b = list(a)\n# b = a.copy()\na.append(4)`}
               solution={`a = [1,2]\n# choose ONE:\n# b = a[:]\n# b = list(a)\n# b = a.copy()\na.append(3)`}
               check={({get, code}) => {
                 const a = get("a");

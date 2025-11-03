@@ -334,6 +334,7 @@
               id="q1"
               title="Q1 · boolean literals and not/and"
               prompt='Use exactly a = True and b = False. Create c = a and (not b). Pass if c is True.'
+              guide={`x = True\ny = False\nz = x and (not y)`}
               solution={`a = True\nb = False\nc = a and (not b)`}
               check={({get, code}) => {
                 const a = get("a"), b = get("b"), c = get("c");
@@ -350,6 +351,7 @@
               id="q2"
               title="Q2 · comparisons"
               prompt='Use x = 5 and y = 3. Create r1 = (x > y) and r2 = (x == 5). Pass if r1 and r2 are both True.'
+              guide={`x = 6\ny = 2\nr1 = (x > y)\nr2 = (x == 6)`}
               solution={`x = 5\ny = 3\nr1 = (x > y)\nr2 = (x == 5)`}
               check={({get}) => {
                 const x = get("x"), y = get("y"), r1 = get("r1"), r2 = get("r2");
@@ -363,6 +365,7 @@
               id="q3"
               title="Q3 · even check with modulo"
               prompt='Use n = 8. Create is_even = (n % 2 == 0). Pass if is_even is True.'
+              guide={`n = 9\nis_even = (n % 3 == 0)`}
               solution={`n = 8\nis_even = (n % 2 == 0)`}
               check={({get}) => {
                 const n = get("n"), is_even = get("is_even");
@@ -376,6 +379,7 @@
               id="q4"
               title="Q4 · chained comparison"
               prompt='Use age = 15. Create is_teen = (13 <= age <= 19). Pass if is_teen is True.'
+              guide={`age = 23\nis_teen = (13 <= age <= 22)`}
               solution={`age = 15\nis_teen = (13 <= age <= 19)`}
               check={({get, code}) => {
                 const age = get("age"), is_teen = get("is_teen");
@@ -390,6 +394,7 @@
               id="q5"
               title="Q5 · truthiness of containers"
               prompt='Use items = []. Create ok = bool(items). Pass if ok is False.'
+              guide={`test = []\nok = bool(test)`}
               solution={`items = []\nok = bool(items)`}
               check={({get, code}) => {
                 const items = get("items"), ok = get("ok");
@@ -404,6 +409,7 @@
               id="q6"
               title="Q6 · membership test with in"
               prompt='Use email = "kid@example.com". Create has_at = ("@" in email). Pass if has_at is True.'
+              guide={`email = "lily@winwin66.com"\nhas_at = ("@" in email)`}
               solution={`email = "kid@example.com"\nhas_at = ("@" in email)`}
               check={({get, code}) => {
                 const email = get("email"), has_at = get("has_at");
@@ -418,6 +424,7 @@
               id="q7"
               title="Q7 · De Morgan's law"
               prompt='Use a = True and b = False. Create left = not(a and b) and right = (not a) or (not b). Pass if left == right is True.'
+              guide={`x = True\ny = False\nleft = not (x and y)\nright = (not x) or (not y)`}
               solution={`a = True\nb = False\nleft = not (a and b)\nright = (not a) or (not b)`}
               check={({get}) => {
                 const a = get("a"), b = get("b"), left = get("left"), right = get("right");
@@ -431,6 +438,7 @@
               id="q8"
               title="Q8 · conditional expression (if ... else)"
               prompt='Use score = 85. Create passed = True if score >= 60 else False, then print(passed). Pass if stdout is "True\\n" and code uses the conditional expression.'
+              guide={`score = 65\npassed = True if score >= 70 else False\nprint(passed)`}
               solution={`score = 85\npassed = True if score >= 60 else False\nprint(passed)`}
               check={({get, out, code}) => {
                 const score = get("score"), passed = get("passed");

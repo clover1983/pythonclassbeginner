@@ -374,6 +374,7 @@
               id="q1"
               title="Q1 · make an empty dict"
               prompt='Create d = {}. Pass if it is empty and your code uses the literal {}.'
+              guide={`a = {}`}
               solution={`d = {}`}
               check={({get, code}) => {
                 const d = get("d");
@@ -388,6 +389,7 @@
               id="q2"
               title="Q2 · get by key with []"
               prompt='Use user = {"name":"Ana"}; make x = user["name"]. Pass if x == "Ana" and code contains ["name"].'
+              guide={`user = {"name": "Eric"}\nx = user["name"]`}
               solution={`user = {"name": "Ana"}\nx = user["name"]`}
               check={({get, code}) => {
                 const x = get("x");
@@ -402,6 +404,7 @@
               id="q3"
               title="Q3 · insert and overwrite"
               prompt='Start with prices = {"apple":1}. Add prices["banana"] = 2 and overwrite prices["apple"] = 3. Pass if prices has {"apple":3,"banana":2}.'
+              guide={`prices = {"apple": 2}\nprices["banana"] = 3\nprices["apple"] = 4`}
               solution={`prices = {"apple": 1}\nprices["banana"] = 2\nprices["apple"] = 3`}
               check={({get}) => {
                 const prices = get("prices");
@@ -415,6 +418,7 @@
               id="q4"
               title="Q4 · pop and del"
               prompt='Use d = {"a":1,"b":2}. Do v = d.pop("b"); then del d["a"]. Pass if v == 2 and d is empty; code must use .pop( and the keyword del.'
+              guide={`d = {"a":3,"b":4,"b":5}\nv = d.pop("b")\ndel d["b"]`}
               solution={`d = {"a":1,"b":2}\nv = d.pop("b")\ndel d["a"]`}
               check={({get, code}) => {
                 const d = get("d");
@@ -431,6 +435,7 @@
               id="q5"
               title="Q5 · membership test and add missing key"
               prompt='Use rec = {"name":"Bob"}. If "id" not in rec, set rec["id"] = 100. Pass if "id" in rec and rec["id"] == 100; code must use the keyword in.'
+              guide={`rec = {"name":"Peter"}\nif "id" not in rec:\n    rec["id"] = 99`}
               solution={`rec = {"name":"Bob"}\nif "id" not in rec:\n    rec["id"] = 100`}
               check={({get, code}) => {
                 const rec = get("rec");
@@ -446,6 +451,7 @@
               id="q6"
               title="Q6 · keys, values, items"
               prompt='Use d = {1:"a", 2:"b"}. Make ks = list(d.keys()), vs = list(d.values()), it = list(d.items()). Pass if len(ks) == len(vs) == 2 and len(it) == 2 and code uses .keys and .items.'
+              guide={`d = {1:"b", 2:"c", 3:"d"}\nks = list(d.keys())\nvs = list(d.values())\nit = list(d.items())`}
               solution={`d = {1:"a", 2:"b"}\nks = list(d.keys())\nvs = list(d.values())\nit = list(d.items())`}
               check={({get, code}) => {
                 const ks = get("ks"); const vs = get("vs"); const it = get("it");
@@ -461,6 +467,7 @@
               id="q7"
               title="Q7 · dict comprehension"
               prompt='Create squares = {n: n*n for n in range(4)}. Pass if squares has pairs (0,0) and (3,9), and code contains for n in range('
+              guide={`squares = {n: n*n for n in range(5)}`}
               solution={`squares = {n: n*n for n in range(4)}`}
               check={({get, code}) => {
                 const squares = get("squares");
@@ -475,6 +482,7 @@
               id="q8"
               title="Q8 · tuple as a key (hashable)"
               prompt='Make k = (1,2); d = {k: "ok"}; val = d[(1,2)]. Pass if val == "ok".'
+              guide={`k = (1,2)\nd = {k: "notok"}\nval = d[(3,4)]`}
               solution={`k = (1,2)\nd = {k: "ok"}\nval = d[(1,2)]`}
               check={({get}) => {
                 const val = get("val");
@@ -488,6 +496,7 @@
               id="q9"
               title="Q9 · copy vs alias (identity)"
               prompt='Start with a = {"x":1}. Make b = a; same = (a is b). Then make c = a.copy(); set a["y"] = 2. Pass if same is True, "y" in a, and "y" not in c; code must use .copy('
+              guide={`a = {"x":2}\nb = a\nsame = (a is b)\nc = a.copy()\na["y"] = 3`}
               solution={`a = {"x":1}\nb = a\nsame = (a is b)\nc = a.copy()\na["y"] = 2`}
               check={({get, code}) => {
                 const a = get("a"); const c = get("c"); const same = get("same");
