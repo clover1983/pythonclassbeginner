@@ -577,14 +577,16 @@
               id="q14"
               title="Q14 · membership: not in (list)"
               prompt='Let items=[1,2,3]; miss = 4 not in items. Pass if miss is True and code uses "not in".'
-              guide={`items = [1,2,3,4]\nmiss = 4 not in items`}
+              guide={`items = [1,2,3,4]\nmiss = 5 not in items`}
               solution={`items = [1,2,3]\nmiss = 4 not in items`}
               check={({get, code}) => {
                 const miss = get("miss");
-                const used = /\bnot\s+in\b/.test(code);
-                const pass = used && miss === true;
-                if (pass) onPass("q14");
-                return pass;
+                const initItems = /items\s*=\s*\[\s*1\s*,\s*2\s*,\s*3\s*\]/.test(code);   // items = [1,2,3]
+                const checkNotIn = /\b4\s+not\s+in\s+items\b/.test(code);                // 4 not in items
+                const usedNotIn = /\bnot\s+in\b/.test(code);
+                const ok = initItems && checkNotIn && usedNotIn && miss === true;
+                if (ok) onPass("q14");
+                return ok;
               }}
             />
 
