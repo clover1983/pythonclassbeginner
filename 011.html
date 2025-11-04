@@ -564,10 +564,12 @@
               solution={`s = "banana"\nhas = "an" in s`}
               check={({get, code}) => {
                 const has = get("has");
-                const used = /\bin\b/.test(code);
-                const pass = used && has === true;
-                if (pass) onPass("q13");
-                return pass;
+                const initBanana = /s\s*=\s*["']banana["']/.test(code);     // s = "banana"
+                const checkSub   = /["']an["']\s+in\s+s/.test(code);        // "an" in s
+                const usedIn = /\bin\b/.test(code);
+                const ok = initBanana && checkSub && usedIn && has === true;
+                if (ok) onPass("q13");
+                return ok;
               }}
             />
 
