@@ -434,10 +434,25 @@
               solution={`nums = [10,11,12]\nfound = False\nfor n in nums:\n    if n == 13:\n        found = True\n        break\nelse:\n    found = False`}
               check={({get, code}) => {
                 const found = get("found");
+                // 必须从 nums = [10,11,12] 开始
+                const initNums = /(^|\s)nums\s*=\s*\[\s*10\s*,\s*11\s*,\s*12\s*\]/.test(code);
+                // 抓出循环变量名 for <v> in nums:
+                const m = /for\s+(\w+)\s+in\s+nums\s*:/.exec(code);
+                const hasFor = !!m;
+                const v = hasFor ? m[1] : "";
+                // 必须比较 if <v> == 13:
+                const cmp13 = v ? new RegExp(`if\\s+${v}\\s*==\\s*13\\s*:`).test(code) : false;
+                // 必须真的用到 for...else 结构
                 const hasForElse = /\bfor\b[\s\S]*\belse\s*:/.test(code);
-                const pass = hasForElse && found === false;
-                if (pass) onPass("q7");
-                return pass;
+                // 循环内：先把 found 设 True，然后 break（保证不是空 break）
+                const setTrueBeforeBreak = /if[\s\S]*?found\s*=\s*True[\s\S]*?break/.test(code);
+                // else 分支里必须把 found 设 False
+                const elseSetsFalse = /else\s*:[\s\S]*?found\s*=\s*False/.test(code);
+                const ok = initNums && hasFor && cmp13 && hasForElse
+                         && setTrueBeforeBreak && elseSetsFalse
+                         && found === false;
+                if (ok) onPass("q7");
+                return ok;
               }}
             />
 
