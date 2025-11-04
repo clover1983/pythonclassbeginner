@@ -526,6 +526,21 @@
               guide={`lst = [3,4]\nc = [4,5]\nsame = (c is lst)`}
               solution={`lst = [1,2]\nc = lst\nsame = (c is lst)`}
               check={({get, code}) => {
+                const same = get("same");
+                const used = /\bis\b/.test(code);
+                const pass = used && same === true;
+                if (pass) onPass("q11");
+                return pass;
+              }}
+            />
+
+            <PyQuiz
+              id="q12"
+              title="Q12 · identity: is not"
+              prompt='Let a=[1,2]; b=[1,2]; diff = (a is not b). Pass if diff is True and code uses "is not".'
+              guide={`a = [3,4]\nb = [4,5]\ndiff = (a is not b)`}
+              solution={`a = [1,2]\nb = [1,2]\ndiff = (a is not b)`}
+              check={({get, code}) => {
                 const a = get("a");
                 const b = get("b");
                 const diff = get("diff");
@@ -537,21 +552,6 @@
                 const ok = usedIsNot && initA && initB && aCorrect && bCorrect && diff === true;
                 if (ok) onPass("q12");
                 return ok;
-              }}
-            />
-
-            <PyQuiz
-              id="q12"
-              title="Q12 · identity: is not"
-              prompt='Let a=[1,2]; b=[1,2]; diff = (a is not b). Pass if diff is True and code uses "is not".'
-              guide={`a = [3,4]\nb = [4,5]\ndiff = (a is not b)`}
-              solution={`a = [1,2]\nb = [1,2]\ndiff = (a is not b)`}
-              check={({get, code}) => {
-                const diff = get("diff");
-                const used = /\bis\s+not\b/.test(code);
-                const pass = used && diff === true;
-                if (pass) onPass("q12");
-                return pass;
               }}
             />
 
