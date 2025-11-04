@@ -390,7 +390,7 @@
             <PyQuiz
               id="q3"
               title="Q3 · add and remove"
-              prompt='Start with s = {1,2}. Add 3, then remove 2. Pass if s == {1,3} and code uses .add( and .remove('
+              prompt='Start with s = {1,2}. Add 3, then remove 2. Pass if s == {1,3} and code uses .add() and .remove()'
               guide={`s = {4,2}\ns.add(3)\ns.remove(4)`}
               solution={`s = {1,2}\ns.add(3)\ns.remove(2)`}
               check={({get, code}) => {
@@ -406,7 +406,7 @@
             <PyQuiz
               id="q4"
               title="Q4 · discard without error"
-              prompt='Start with s = {1}. Call s.discard(2). Pass if s is still {1} and code uses .discard('
+              prompt='Start with s = {1}. Call s.discard(2). Pass if s is still {1} and code uses .discard()'
               guide={`s = {2}\ns.discard(3)`}
               solution={`s = {1}\ns.discard(2)`}
               check={({get, code}) => {
@@ -436,7 +436,7 @@
             <PyQuiz
               id="q6"
               title="Q6 · intersection"
-              prompt='With a = {1,2,3} and b = {3,4}, make i = a & b (or a.intersection(b)). Pass if i == {3} and code uses & or .intersection('
+              prompt='With a = {1,2,3} and b = {3,4}, make i = a & b (or a.intersection(b)). Pass if i == {3} and code uses & or .intersection()'
               guide={`a = {1,2,4}\nb = {3,4}\ni = a & b`}
               solution={`a = {1,2,3}\nb = {3,4}\ni = a & b`}
               check={({get, code}) => {
@@ -451,7 +451,7 @@
             <PyQuiz
               id="q7"
               title="Q7 · de-duplicate a list"
-              prompt='Use nums = [1,1,2,3,3]; make uniq = set(nums). Pass if uniq == {1,2,3} and code uses set('
+              prompt='Use nums = [1,1,2,3,3]; make uniq = set(nums). Pass if uniq == {1,2,3} and code uses set()'
               guide={`nums = [4,2,2,3]\nuniq = set(nums)`}
               solution={`nums = [1,1,2,3,3]\nuniq = set(nums)`}
               check={({get, code}) => {
@@ -466,7 +466,7 @@
             <PyQuiz
               id="q8"
               title="Q8 · set comprehension"
-              prompt='Create squares = {n*n for n in range(5)}. Pass if it equals {0,1,4,9,16} and code contains for n in range('
+              prompt='Create squares = {n*n for n in range(5)}. Pass if it equals {0,1,4,9,16} and code contains for n in range()'
               guide={`squares = {n*n for n in range(6)}`}
               solution={`squares = {n*n for n in range(5)}`}
               check={({get, code}) => {
