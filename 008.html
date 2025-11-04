@@ -251,9 +251,9 @@
                 {status.lastErr ? <div>stderr: {String(status.lastErr)}</div> : null}
               </div>
             )}
-            {status.lastVars && Object.keys(status.lastVars).length > 0 && (
+            {status.lastVars && (
               <pre className="bg-slate-100 text-slate-800 text-xs p-2 rounded mono overflow-auto">
-                {JSON.stringify(status.lastVars, null, 2)}
+                {status.lastVars}
               </pre>
             )}
             {!pyodide && <Loader />}
