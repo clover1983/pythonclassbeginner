@@ -355,11 +355,19 @@
               guide={`n = 5\nif n >= 0:\n    sign = "nonnegative"\nelse:\n    sign = "negative"`}
               solution={`n = 3\nif n >= 0:\n    sign = "nonnegative"\nelse:\n    sign = "negative"`}
               check={({get, code}) => {
+                const n = get("n");
                 const sign = get("sign");
-                const hasElse = /\belse\s*:/.test(code);
-                const pass = sign === "nonnegative" && hasElse;
-                if (pass) onPass("q2");
-                return pass;
+                // 代码层面的约束
+                const initN3        = /(^|\s)n\s*=\s*3\b/.test(code);               // n = 3
+                const condNGe0      = /if\s+n\s*>=\s*0\s*:/.test(code);             // if n >= 0:
+                const hasElse       = /\belse\s*:/.test(code);                      // else:
+                const hasSetNonneg  = /sign\s*=\s*["']nonnegative["']/.test(code);  // 分支字面量
+                const hasSetNeg     = /sign\s*=\s*["']negative["']/.test(code);
+                // 运行结果的约束
+                const resultOK = (n === 3) && (sign === "nonnegative");
+                const ok = resultOK && initN3 && condNGe0 && hasElse && hasSetNonneg && hasSetNeg;
+                if (ok) onPass("q2");
+                return ok;
               }}
             />
 
@@ -370,11 +378,18 @@
               guide={`score = 81\nif score >= 90:\n    grade = "A"\nelif score >= 80:\n    grade = "B"\nelif score >= 70:\n    grade = "C"\nelse:\n    grade = "F"`}
               solution={`score = 85\nif score >= 90:\n    grade = "A"\nelif score >= 80:\n    grade = "B"\nelif score >= 70:\n    grade = "C"\nelse:\n    grade = "F"`}
               check={({get, code}) => {
+                const score = get("score");
                 const grade = get("grade");
-                const hasElif = /\belif\b/.test(code);
-                const pass = grade === "B" && hasElif;
-                if (pass) onPass("q3");
-                return pass;
+                const init85   = /(^|\s)score\s*=\s*85\b/.test(code);
+                const hasIf90  = /if\s+score\s*>=\s*90\s*:/.test(code);
+                const hasElif80= /elif\s+score\s*>=\s*80\s*:/.test(code);
+                const hasElif70= /elif\s+score\s*>=\s*70\s*:/.test(code);
+                const hasElse  = /\belse\s*:/.test(code);
+                const hasElif  = (code.match(/\belif\b/g) || []).length >= 2;
+                const ok = init85 && hasIf90 && hasElif80 && hasElif70 && hasElse
+                         && hasElif && score === 85 && grade === "B";
+                if (ok) onPass("q3");
+                return ok;
               }}
             />
 
@@ -415,11 +430,18 @@
               guide={`y = 2004\nleap = False\nif y % 4 == 0:\n    if y % 100 == 0:\n        if y % 400 == 0:\n            leap = True\n        else:\n            leap = False\n    else:\n        leap = True\nelse:\n    leap = False`}
               solution={`y = 2000\nleap = False\nif y % 4 == 0:\n    if y % 100 == 0:\n        if y % 400 == 0:\n            leap = True\n        else:\n            leap = False\n    else:\n        leap = True\nelse:\n    leap = False`}
               check={({get, code}) => {
+                const y = get("y");
                 const leap = get("leap");
-                const hasIfs = (code.match(/\bif\b/g)||[]).length >= 2;
-                const pass = leap === true && hasIfs;
-                if (pass) onPass("q6");
-                return pass;
+                const initY2000 = /(^|\s)y\s*=\s*2000\b/.test(code);
+                // 按顺序的嵌套结构：if y%4==0 ... if y%100==0 ... if y%400==0
+                const nestedOrder =
+                  /if\s+y\s*%\s*4\s*==\s*0\s*:\s*[\s\S]*?if\s+y\s*%\s*100\s*==\s*0\s*:\s*[\s\S]*?if\s+y\s*%\s*400\s*==\s*0\s*:/.test(code);
+                // 至少出现3个 if（嵌套），并且没有“一行三元 if 表达式”
+                const ifCount = (code.match(/(^|\s)if\s+/g) || []).length >= 3;
+                const noInlineTernary = !/\bif\b.*\belse\b.*\n?$/m.test(code); // 同行 if ... else 视为三元
+                const ok = initY2000 && nestedOrder && ifCount && noInlineTernary && y === 2000 && leap === true;
+                if (ok) onPass("q6");
+                return ok;
               }}
             />
 
@@ -430,11 +452,17 @@
               guide={`n = 9\nlabel = "even" if n%3==0 else "odd"`}
               solution={`n = 7\nlabel = "even" if n%2==0 else "odd"`}
               check={({get, code}) => {
+                const n = get("n");
                 const label = get("label");
-                const usedInline = /\bif\b.*\belse\b/.test(code);
-                const pass = usedInline && label === "odd";
-                if (pass) onPass("q7");
-                return pass;
+                const initN7 = /(^|\s)n\s*=\s*7\b/.test(code);
+                // 一行的三元表达式：label = "even" if n%2==0 else "odd"
+                const inlineExact =
+                  /label\s*=\s*["']even["']\s*if\s*n\s*%\s*2\s*==\s*0\s*else\s*["']odd["']/.test(code);
+                // 禁止块级 if/else 作为替代
+                const noBlockIf = !/\n\s*if\s+/.test(code);
+                const ok = initN7 && inlineExact && noBlockIf && n === 7 && label === "odd";
+                if (ok) onPass("q7");
+                return ok;
               }}
             />
 
