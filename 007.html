@@ -444,7 +444,7 @@
             <PyQuiz
               id="q8"
               title="Q8 · tuple methods count and index"
-              prompt='Use t = (1,2,2,3). Create c = t.count(2) and i = t.index(3). Pass if c == 2 and i == 3 and code uses .count( and .index('
+              prompt='Use t = (1,2,2,3). Create c = t.count(2) and i = t.index(3). Pass if c == 2 and i == 3 and code uses .count() and .index()'
               guide={`t = (8,4,4,4,7)\nc = t.count(4)\ni = t.index(4)`}
               solution={`t = (1,2,2,3)\nc = t.count(2)\ni = t.index(3)`}
               check={({get, code}) => {
@@ -460,7 +460,7 @@
             <PyQuiz
               id="q9"
               title="Q9 · mutable item inside a tuple"
-              prompt='Make t = ([1,2], 99). Then append 3 to the inner list. Pass if t == ([1,2,3], 99) and code uses .append('
+              prompt='Make t = ([1,2], 99). Then append 3 to the inner list. Pass if t == ([1,2,3], 99) and code uses .append()'
               guide={`t = ([6,5], 88)\nt[0].append(4)`}
               solution={`t = ([1,2], 99)\nt[0].append(3)`}
               check={({get, code}) => {
