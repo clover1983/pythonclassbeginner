@@ -526,11 +526,17 @@
               guide={`lst = [3,4]\nc = [4,5]\nsame = (c is lst)`}
               solution={`lst = [1,2]\nc = lst\nsame = (c is lst)`}
               check={({get, code}) => {
-                const same = get("same");
-                const used = /\bis\b/.test(code);
-                const pass = used && same === true;
-                if (pass) onPass("q11");
-                return pass;
+                const a = get("a");
+                const b = get("b");
+                const diff = get("diff");
+                const usedIsNot = /\bis\s+not\b/.test(code);
+                const initA = /a\s*=\s*\[\s*1\s*,\s*2\s*\]/.test(code);
+                const initB = /b\s*=\s*\[\s*1\s*,\s*2\s*\]/.test(code);
+                const aCorrect = Array.isArray(a) && a[0] === 1 && a[1] === 2;
+                const bCorrect = Array.isArray(b) && b[0] === 1 && b[1] === 2;
+                const ok = usedIsNot && initA && initB && aCorrect && bCorrect && diff === true;
+                if (ok) onPass("q12");
+                return ok;
               }}
             />
 
