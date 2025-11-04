@@ -411,7 +411,7 @@
               solution={`s = {1}\ns.discard(2)`}
               check={({get, code}) => {
                 const s = get("s");
-                const hasDiscard = /.discard\(/.test(code);
+                const hasDiscard = /\.discard\s*\(\s*2\s*\)/.test(code);
                 const ok = isSetLike(s) && setEquals(s, [1]) && hasDiscard;
                 if (ok) onPass("q4");
                 return ok;
