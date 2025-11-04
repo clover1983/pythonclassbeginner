@@ -385,7 +385,7 @@
               prompt='Use s = ""; create flag = bool(s). Pass if flag is False and code uses bool( ).'
               guide={`a = ""\nflag = bool(a)`}
               solution={`s = ""\nflag = bool(s)`}
-              check: ({get, code}) => {
+              check={({get, code}) => {
                 const flag = get("flag");
                 const hasBool = /bool\s*\(/.test(code);
                 const usedS = /s\s*=\s*""/.test(code);
