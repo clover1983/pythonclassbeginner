@@ -417,7 +417,7 @@
             <PyQuiz
               id="q4"
               title="Q4 · pop and del"
-              prompt='Use d = {"a":1,"b":2}. Do v = d.pop("b"); then del d["a"]. Pass if v == 2 and d is empty; code must use .pop( and the keyword del.'
+              prompt='Use d = {"a":1,"b":2}. Do v = d.pop("b"); then del d["a"]. Pass if v == 2 and d is empty; code must use .pop() and the keyword del.'
               guide={`d = {"a":3,"b":4,"b":5}\nv = d.pop("b")\ndel d["b"]`}
               solution={`d = {"a":1,"b":2}\nv = d.pop("b")\ndel d["a"]`}
               check={({get, code}) => {
@@ -466,7 +466,7 @@
             <PyQuiz
               id="q7"
               title="Q7 · dict comprehension"
-              prompt='Create squares = {n: n*n for n in range(4)}. Pass if squares has pairs (0,0) and (3,9), and code contains for n in range('
+              prompt='Create squares = {n: n*n for n in range(4)}. Pass if squares has pairs (0,0) and (3,9), and code contains for n in range()'
               guide={`squares = {n: n*n for n in range(5)}`}
               solution={`squares = {n: n*n for n in range(4)}`}
               check={({get, code}) => {
@@ -495,7 +495,7 @@
             <PyQuiz
               id="q9"
               title="Q9 · copy vs alias (identity)"
-              prompt='Start with a = {"x":1}. Make b = a; same = (a is b). Then make c = a.copy(); set a["y"] = 2. Pass if same is True, "y" in a, and "y" not in c; code must use .copy('
+              prompt='Start with a = {"x":1}. Make b = a; same = (a is b). Then make c = a.copy(); set a["y"] = 2. Pass if same is True, "y" in a, and "y" not in c; code must use .copy()'
               guide={`a = {"x":2}\nb = a\nsame = (a is b)\nc = a.copy()\na["y"] = 3`}
               solution={`a = {"x":1}\nb = a\nsame = (a is b)\nc = a.copy()\na["y"] = 2`}
               check={({get, code}) => {
