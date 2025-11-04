@@ -502,9 +502,26 @@
               guide={`a = {"x":2}\nb = a\nsame = (a is b)\nc = a.copy()\na["y"] = 3`}
               solution={`a = {"x":1}\nb = a\nsame = (a is b)\nc = a.copy()\na["y"] = 2`}
               check={({get, code}) => {
-                const a = get("a"); const c = get("c"); const same = get("same");
-                const usedCopy = /\.copy\(/.test(code);
-                const ok = same === true && dictHas(a, "y") && !dictHas(c, "y") && usedCopy;
+                const a = get("a");
+                const b = get("b");
+                const c = get("c");
+                const same = get("same");
+                // 语法与写法强约束
+                const initA1     = /a\s*=\s*\{\s*["']x["']\s*:\s*1\s*\}/.test(code);            // a = {"x":1}
+                const assignBA   = /b\s*=\s*a/.test(code);                                      // b = a
+                const usedIsAB   = /\(\s*a\s+is\s+b\s*\)/.test(code);                           // same = (a is b)
+                const usedCopy   = /c\s*=\s*a\.copy\s*\(\s*\)/.test(code);                      // c = a.copy()
+                const noDeepcopy = !/deepcopy\s*\(/.test(code);                                 // 禁用 deepcopy
+                const setY2      = /a\[\s*["']y["']\s*\]\s*=\s*2/.test(code);                   // a["y"] = 2
+                // 运行时结果强约束
+                const ax1 = dictHas(a, "x") && dictGet(a, "x") === 1;                           // a.x 仍为 1
+                const cx1 = dictHas(c, "x") && dictGet(c, "x") === 1;                           // c.x 仍为 1（复制成功）
+                const ay2 = dictHas(a, "y") && dictGet(a, "y") === 2;                           // a.y 被设为 2
+                const by2 = dictHas(b, "y") && dictGet(b, "y") === 2;                           // b 与 a 同步（别名验证）
+                const cyNone = !dictHas(c, "y");                                                // c 中没有 y（浅拷贝验证）
+                const sameTrue = same === true;                                                 // 身份判断为真
+                const ok = initA1 && assignBA && usedIsAB && usedCopy && noDeepcopy && setY2
+                        && sameTrue && ax1 && cx1 && ay2 && by2 && cyNone;
                 if (ok) onPass("q9");
                 return ok;
               }}
