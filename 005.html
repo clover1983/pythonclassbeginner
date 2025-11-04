@@ -356,8 +356,9 @@
               solution={`value = None\nis_none = (value is None)`}
               check={({get, code}) => {
                 const is_none = get("is_none");
-                const has = /is\s+None/.test(code);
-                const ok = (is_none === true) && has;
+                const usedValueVar = /value\s*=\s*None/.test(code);
+                const hasIsNone = /is\s+None/.test(code);
+                const ok = (is_none === true) && usedValueVar && hasIsNone;
                 if (ok) onPass("q2");
                 return ok;
               }}
