@@ -472,7 +472,10 @@
               check={({get, code}) => {
                 const squares = get("squares");
                 const hasFor = /for\s+\w+\s+in\s+range\(/.test(code);
-                const ok = hasFor && dictHas(squares, 0) && dictGet(squares, 0) === 0 && dictHas(squares, 3) && dictGet(squares, 3) === 9;
+                const hasPairs = dictHas(squares, 0) && dictGet(squares, 0) === 0
+                              && dictHas(squares, 3) && dictGet(squares, 3) === 9;
+                const onlyUpTo3 = Object.keys(squares).every(k => Number(k) <= 3);
+                const ok = hasFor && hasPairs && onlyUpTo3;
                 if (ok) onPass("q7");
                 return ok;
               }}
