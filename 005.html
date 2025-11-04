@@ -385,13 +385,15 @@
               prompt='Use s = ""; create flag = bool(s). Pass if flag is False and code uses bool( ).'
               guide={`a = ""\nflag = bool(a)`}
               solution={`s = ""\nflag = bool(s)`}
-              check={({get, code}) => {
+              check: ({get, code}) => {
                 const flag = get("flag");
-                const has = /bool\s*\(/.test(code);
-                const ok = (flag === false) && has;
+                const hasBool = /bool\s*\(/.test(code);
+                const usedS = /s\s*=\s*""/.test(code);   // 一定要用 s = ""
+                const hasBoolS = /bool\s*\(\s*s\s*\)/.test(code); // bool(s)
+                const ok = (flag === false) && hasBool && usedS && hasBoolS;
                 if (ok) onPass("q4");
                 return ok;
-              }}
+              }
             />
 
             <PyQuiz
