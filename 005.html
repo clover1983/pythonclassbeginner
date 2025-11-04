@@ -434,8 +434,11 @@
               guide={`b = None\nif b is None:\n    print("notempty")\nelse:\n    print("notok")`}
               solution={`a = None\nif a is None:\n    print("empty")\nelse:\n    print("ok")`}
               check={({out, code}) => {
-                const has = /is\s+None/.test(code);
-                const ok = (out === "empty\n") && has;
+                const useAssignA   = /a\s*=\s*None/.test(code);      // must have a = None
+                const guardWithA   = /if\s+a\s+is\s+None/.test(code); // must use a in guard
+                const outputCorrect = (out === "empty\n");
+                const hasIsNone = /is\s+None/.test(code);
+                const ok = outputCorrect && hasIsNone && useAssignA && guardWithA;
                 if (ok) onPass("q7");
                 return ok;
               }}
