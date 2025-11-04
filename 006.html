@@ -351,7 +351,7 @@
             <PyQuiz
               id="q2"
               title="Q2 · append"
-              prompt='Start with lst = [1, 2]. Append 3. Pass if lst == [1, 2, 3] and code uses .append('
+              prompt='Start with lst = [1, 2]. Append 3. Pass if lst == [1, 2, 3] and code uses .append()'
               guide={`lst = [3, 4]\nlst.append(45)`}
               solution={`lst = [1, 2]\nlst.append(3)`}
               check={({get, code}) => {
@@ -398,7 +398,7 @@
             <PyQuiz
               id="q5"
               title="Q5 · insert at a position"
-              prompt='Start with c = ["a", "c"]. Insert "b" at index 1. Pass if c == ["a","b","c"] and code uses .insert('
+              prompt='Start with c = ["a", "c"]. Insert "b" at index 1. Pass if c == ["a","b","c"] and code uses .insert()'
               guide={`c = ["e", "k"]\nc.insert(1, "f")`}
               solution={`c = ["a", "c"]\nc.insert(1, "b")`}
               check={({get, code}) => {
@@ -413,7 +413,7 @@
             <PyQuiz
               id="q6"
               title="Q6 · pop and remove"
-              prompt='Start with d = [1,2,3,2]; do pop_last = d.pop(); then d.remove(2). Pass if pop_last == 2, d == [1,3], and code uses both pop( and remove('
+              prompt='Start with d = [1,2,3,2]; do pop_last = d.pop(); then d.remove(2). Pass if pop_last == 2, d == [1,3], and code uses both pop() and remove()'
               guide={`d = [4,5,6,5]\npop_last = d.pop()\nd.remove(5)`}
               solution={`d = [1,2,3,2]\npop_last = d.pop()\nd.remove(2)`}
               check={({get, code}) => {
@@ -445,7 +445,7 @@
             <PyQuiz
               id="q8"
               title="Q8 · list comprehension"
-              prompt='Create squares = [n*n for n in range(5)]. Pass if squares == [0,1,4,9,16] and code contains for n in range('
+              prompt='Create squares = [n*n for n in range(5)]. Pass if squares == [0,1,4,9,16] and code contains for n in range()'
               guide={`squares = [n*n for n in range(6)]`}
               solution={`squares = [n*n for n in range(5)]`}
               check={({get, code}) => {
