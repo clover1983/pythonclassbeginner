@@ -388,8 +388,8 @@
               check: ({get, code}) => {
                 const flag = get("flag");
                 const hasBool = /bool\s*\(/.test(code);
-                const usedS = /s\s*=\s*""/.test(code);   // 一定要用 s = ""
-                const hasBoolS = /bool\s*\(\s*s\s*\)/.test(code); // bool(s)
+                const usedS = /s\s*=\s*""/.test(code);
+                const hasBoolS = /bool\s*\(\s*s\s*\)/.test(code);
                 const ok = (flag === false) && hasBool && usedS && hasBoolS;
                 if (ok) onPass("q4");
                 return ok;
