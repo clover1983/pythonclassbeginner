@@ -85,7 +85,8 @@
 
     // --- Set helpers for Pyodide toJs conversions ---
     function isSetLike(x){
-      return x && ((typeof x.has === "function" && typeof x.size === "number") || Array.isArray(x));
+      return x instanceof Set || ((typeof x.toJS === "function") && (x.toJS() instanceof Set))
+      //return x && ((typeof x.has === "function" && typeof x.size === "number") || Array.isArray(x));
     }
     function setSize(x){
       if(!x) return 0;
