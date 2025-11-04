@@ -419,10 +419,24 @@
               solution={`nums = [10,11,12]\nfound = False\ni = 0\nwhile i < len(nums):\n    if nums[i] == 13:\n        found = True\n        break\n    i += 1\nelse:\n    found = False`}
               check={({get, code}) => {
                 const found = get("found");
-                const hasElse = /while[\s\S]*else\s*:/.test(code);
-                const pass = hasElse && found === false;
-                if (pass) onPass("q5");
-                return pass;
+                const initNums = /(^|\s)nums\s*=\s*\[\s*10\s*,\s*11\s*,\s*12\s*\]/.test(code);
+                const initI0   = /(^|\s)i\s*=\s*0\b/.test(code);
+                // while i < len(nums):
+                const whileHeader = /while\s+i\s*<\s*len\s*\(\s*nums\s*\)\s*:/.test(code);
+                // 循环变量自增（允许写在循环体任何位置）
+                const hasInc = /i\s*\+\=\s*1/.test(code);
+                // if nums[i] == 13:  found=True ; break
+                const cmp13 = /if\s+nums\s*\[\s*i\s*\]\s*==\s*13\s*:/.test(code);
+                const setTrueBeforeBreak = /if\s+nums\s*\[\s*i\s*\]\s*==\s*13\s*:[\s\S]*?found\s*=\s*True[\s\S]*?break/.test(code);
+                // while...else 结构 + else 中设置 False
+                const hasWhileElse = /while[\s\S]*?else\s*:/.test(code);
+                const elseSetsFalse = /else\s*:[\s\S]*?found\s*=\s*False/.test(code);
+                const ok = initNums && initI0 && whileHeader && hasInc
+                         && cmp13 && setTrueBeforeBreak
+                         && hasWhileElse && elseSetsFalse
+                         && found === false;
+                if (ok) onPass("q5");
+                return ok;
               }}
             />
 
@@ -467,10 +481,16 @@
               solution={`n = 5\nwhile n > 0:\n    n -= 1`}
               check={({get, code}) => {
                 const n = get("n");
-                const usedWhile = /\bwhile\b/.test(code);
-                const pass = usedWhile && n === 0;
-                if (pass) onPass("q8");
-                return pass;
+                const initN5     = /(^|\s)n\s*=\s*5\b/.test(code);
+                const whileCond  = /while\s+n\s*>\s*0\s*:/.test(code);
+                const usedWhile  = /\bwhile\b/.test(code);
+                // 允许两种等价写法：n -= 1 或 n = n - 1
+                const decBy1 = /n\s*-\=\s*1/.test(code) || /n\s*=\s*n\s*-\s*1/.test(code);
+                // 禁止任何直接 n = 0（避免“作弊清零”）
+                const noDirectZero = !/^\s*n\s*=\s*0\b/m.test(code) && !/\n\s*n\s*=\s*0\b/.test(code);
+                const ok = usedWhile && initN5 && whileCond && decBy1 && noDirectZero && n === 0;
+                if (ok) onPass("q8");
+                return ok;
               }}
             />
 
