@@ -28,7 +28,8 @@
     // --- Boot Pyodide (v0.29) and inject helpers ---
     const pyodideReadyPromise = (async () => {
       const p = await loadPyodide({
-        indexURL: "https://cdn.jsdelivr.net/pyodide/v0.29.0/full/"
+        indexURL: "https://cdn.jsdelivr.net/pyodide/v0.29.0/full/",
+        pyproxyToStringRepr: true
       });
       await p.runPythonAsync([
         "import sys, io",
@@ -188,7 +189,7 @@
             names = Array.from(names).filter(n => n !== "__builtins__");
             for (const k of names) {
               const v = glb.get(k);
-              snapshot[k] = (v && typeof v.toJs === "function") ? v.toJs() : v;
+              snapshot[k] = (v && typeof v.toJs === "function" && typeof v.toString === "function") ? v.toString() : JSON.stringify(v);
             }
           } catch (_) {}
 
@@ -197,7 +198,7 @@
             text: qpass ? "Correct" : "Not correct. See hints.",
             lastOut: out,
             lastErr: err,
-            lastVars: snapshot
+            lastVars: Object.entries(snapshot).map(([k,v])=>`${k} = ${v}`).join('\n')
           });
 
           glb.destroy && glb.destroy();
@@ -232,9 +233,9 @@
                 {status.lastErr ? <div>stderr: {String(status.lastErr)}</div> : null}
               </div>
             )}
-            {status.lastVars && Object.keys(status.lastVars).length > 0 && (
+            {status.lastVars && (
               <pre className="bg-slate-100 text-slate-800 text-xs p-2 rounded mono overflow-auto">
-                {JSON.stringify(status.lastVars, null, 2)}
+                {status.lastVars}
               </pre>
             )}
             {!pyodide && <Loader />}

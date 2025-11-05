@@ -84,6 +84,9 @@
       return { glb, out, err, code: codeNorm };
     }
 
+    // Small helpers
+    function approx(a,b,eps=1e-9){ return Math.abs(a-b) < eps; }
+    
     function Code({children}){
       return <pre className="bg-gray-950 text-gray-100 p-4 rounded-2xl text-sm overflow-auto shadow-inner mono"><code>{children}</code></pre>;
     }
