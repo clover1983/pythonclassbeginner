@@ -442,7 +442,7 @@
                 const a = get("a");
                 const used = /\ba\s*\+=\s*3\b/.test(code);
                 const pass = used && a === 8;
-                if (pass) { onPass("q8"); }
+                if (pass) { onPass("q7"); }
                 return pass;
               }}
             />
@@ -458,7 +458,7 @@
                 const usedImport = /(^|\n)\s*import\s+math\b/.test(code);
                 const usedSqrt = /math\.sqrt\(/.test(code);
                 const ok = usedImport && usedSqrt && x === 9;
-                if (ok) onPass("q1");
+                if (ok) onPass("q8");
                 return ok;
               }}
             />
@@ -474,7 +474,7 @@
                 const usedFloor = /math\.floor\(/.test(code);
                 const usedCeil = /math\.ceil\(/.test(code);
                 const ok = usedFloor && usedCeil && a === 3 && b === 4;
-                if (ok) onPass("q2");
+                if (ok) onPass("q9");
                 return ok;
               }}
             />
@@ -490,7 +490,7 @@
                 const usedPi = /math\.pi/.test(code);
                 const usedPow = /\*\*/.test(code);
                 const ok = usedPi && usedPow && approx(area, 12.566370614359172);
-                if (ok) onPass("q3");
+                if (ok) onPass("q10");
                 return ok;
               }}
             />
@@ -505,7 +505,7 @@
                 const s = get("s");
                 const usedRad = /math\.radians\(/.test(code);
                 const ok = usedRad && approx(s, 0.5);
-                if (ok) onPass("q4");
+                if (ok) onPass("q11");
                 return ok;
               }}
             />
@@ -521,7 +521,7 @@
                 const usedLog = /math\.log\(/.test(code);
                 const usedLog10 = /math\.log10\(/.test(code);
                 const ok = usedLog && usedLog10 && approx(a, 1.0) && b === 2;
-                if (ok) onPass("q5");
+                if (ok) onPass("q12");
                 return ok;
               }}
             />
