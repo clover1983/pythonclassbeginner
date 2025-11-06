@@ -407,7 +407,7 @@
               solution={`ans = (2 + 3) * 4`}
               check={({get, code}) => {
                 const ans = get("ans");
-                const hasParens = /\(\s*2\s*\+\s*3\s*\)/.test(code);
+                const hasParens = /\(\s*(2|3)\s*\+\s*(3|2)\s*\)/.test(code);
                 const pass = ans === 20 && hasParens;
                 if (pass) { onPass("q5"); }
                 return pass;
