@@ -500,8 +500,9 @@
 
                 const lines = out.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
                 const printedTwoDifferent = lines.length >= 2 && lines[0] !== lines[1];
+                const printedFunction = /^\s*<function.*>\s*$/m.test(out);
 
-                const pass = hasGlobal && shadowAssigned && printedTwoDifferent && !usedGlobalKeyword;
+                const pass = hasGlobal && shadowAssigned && printedTwoDifferent && !usedGlobalKeyword && !printedFunction;
                 if (pass) { onPass("q6"); }
                 return pass;
               }}
