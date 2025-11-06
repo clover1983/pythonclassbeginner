@@ -463,7 +463,7 @@
             <PyQuiz
               id="q7"
               title="Q7 · simulate input in a while-loop"
-              prompt='Simulate user input to unlock password \"python\". Prepare inputs = [\"\", \"python\"]. Define input = lambda prompt=\"\": inputs.pop(0). Loop while password != \"python\": call input each time. At the end, attempts should be 2 and password == \"python\". Pass if so and code uses input( and while.'
+              prompt='Simulate user input to unlock password "python". Prepare inputs = ["", "python"]. Define input = lambda prompt="": inputs.pop(0). Loop while password != "python": call input each time. At the end, attempts should be 2 and password == "python". Pass if so and code uses input() and while.'
               guide={`inputs = [\"\", \"python\"]\ninput = lambda prompt=\"\": inputs.pop(0)\npassword = \"\"\nattempts = 0\nwhile password != \"newpassword\":\n    password = input(\"Enter password: \")\n    attempts += 1`}
               solution={`inputs = [\"\", \"python\"]\ninput = lambda prompt=\"\": inputs.pop(0)\npassword = \"\"\nattempts = 0\nwhile password != \"python\":\n    password = input(\"Enter password: \")\n    attempts += 1`}
               check={({get, code}) => {
@@ -502,7 +502,7 @@
               id="q9"
               title="Q9 · choose the right loop"
               prompt='Set choice = "while" if you should "repeat until a condition becomes False"; set choice = "for" otherwise. For this task, set choice to "while". Pass if choice == "while".'
-              guide={`choice = while`}
+              guide={`choice = \"anything\"`}
               solution={`choice = \"while\"`}
               check={({get}) => {
                 const choice = get("choice");
