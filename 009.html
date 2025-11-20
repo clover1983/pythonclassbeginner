@@ -513,7 +513,7 @@
                 // 语法与写法强约束
                 const initA1     = /a\s*=\s*\{\s*["']x["']\s*:\s*1\s*\}/.test(code);            // a = {"x":1}
                 const assignBA   = /b\s*=\s*a/.test(code);                                      // b = a
-                const usedIsAB   = /\(\s*a\s+is\s+b\s*\)/.test(code);                           // same = (a is b)
+                const usedIsAB   = /\ba\s+is\s+b\b/.test(code);                                 // same = (a is b)
                 const usedCopy   = /c\s*=\s*a\.copy\s*\(\s*\)/.test(code);                      // c = a.copy()
                 const noDeepcopy = !/deepcopy\s*\(/.test(code);                                 // 禁用 deepcopy
                 const setY2      = /a\[\s*["']y["']\s*\]\s*=\s*2/.test(code);                   // a["y"] = 2
