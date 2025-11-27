@@ -434,8 +434,8 @@
               id="q7"
               title="Q7 · for–else (not found)"
               prompt='Search for 13 in nums = [10,11,12] using a for-loop with an else: clause; set found = True if you break, otherwise found = False in else. Pass if found is False and code uses for...else.'
-              guide={`nums = [10,12,14,16]\nfound = False\nfor n in nums:\n    if n == 17:\n        found = True\n        break\n    else:\n    found = False`}
-              solution={`nums = [10,11,12]\nfound = False\nfor n in nums:\n    if n == 13:\n        found = True\n        break\n    else:\n    found = False`}
+              guide={`nums = [10,12,14,16]\nfound = False\nfor n in nums:\n    if n == 17:\n        found = True\n        break\n    else:\n        found = False`}
+              solution={`nums = [10,11,12]\nfound = False\nfor n in nums:\n    if n == 13:\n        found = True\n        break\n    else:\n        found = False`}
               check={({get, code}) => {
                 const found = get("found");
                 // 必须从 nums = [10,11,12] 开始
