@@ -300,7 +300,7 @@
           setScore(s => s + 1);
         }
       }
-      const total = 8; // 8 class quizzes
+      const total = 10; // 8 class quizzes
       const progress = Math.round(Object.keys(done).length/total*100);
 
       return (
@@ -598,6 +598,75 @@ out = Temp().f()`}
                 if (pass) onPass("q8");
                 return pass;
               }}
+            />
+
+                        {/* Q9: Class variables */}
+            <PyQuiz
+              id="q9"
+              title="Q9 · Class variables"
+              prompt='Create class Counter with class variable total = 0. In __init__, increment Counter.total by 1. After creating three objects, out should equal 3.'
+              starter={`class Counter:
+    total = 0  # class variable
+
+    def __init__(self):
+        # increment class variable
+        pass
+
+a = Counter()
+b = Counter()
+c = Counter()
+out = None
+`}
+              guide={`class Counter:
+    total = 0
+    def __init__(self):
+        Counter.total += 1
+
+a = Counter(); b = Counter(); c = Counter()
+out = Counter.total`}
+              solution={`class Counter:
+    total = 0
+    def __init__(self):
+        Counter.total += 1
+
+a = Counter(); b = Counter(); c = Counter()
+out = Counter.total`}
+              check={({get}) => get("out") === 3}
+            />
+
+            {/* Q10: Magic method __add__ */}
+            <PyQuiz
+              id="q10"
+              title="Q10 · Magic method __add__"
+              prompt='Create class Vec with __init__(self, x) storing x. Implement __add__(self, other) returning Vec(self.x + other.x). For Vec(2)+Vec(3), out = result.x should be 5.'
+              starter={`class Vec:
+    def __init__(self, x):
+        pass
+
+    def __add__(self, other):
+        # return a new Vec
+        pass
+
+v = Vec(2) + Vec(3)
+out = None
+`}
+              guide={`class Vec:
+    def __init__(self, x):
+        self.x = x
+    def __add__(self, other):
+        return Vec(self.x + other.x)
+
+v = Vec(2) + Vec(3)
+out = v.x`}
+              solution={`class Vec:
+    def __init__(self, x):
+        self.x = x
+    def __add__(self, other):
+        return Vec(self.x + other.x)
+
+v = Vec(2) + Vec(3)
+out = v.x`}
+              check={({get}) => get("out") === 5}
             />
 
             <Card title="Recap & Tips" footer="Think of a class as a blueprint: __init__ builds objects with attributes; methods add behavior. Keep classes small and focused.">
